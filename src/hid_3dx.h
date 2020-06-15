@@ -30,8 +30,18 @@
           HID_REPORT_SIZE ( 16                                      ),\
           HID_REPORT_COUNT( 3                            ),\
           HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_RELATIVE ),\
-        HID_COLLECTION_END, \
-    HID_COLLECTION_END \
+      HID_COLLECTION_END, \
+      /* Output */ \
+      HID_REPORT_ID       (0x80 ), \
+      HID_USAGE_PAGE_N ( HID_USAGE_PAGE_VENDOR, 2     )        ,\
+      HID_USAGE      ( 0x20  )        ,\
+      HID_LOGICAL_MIN ( 0x00                                    ),\
+      HID_LOGICAL_MAX ( 0xff                                    ),\
+      HID_REPORT_SIZE ( 8                                       ),\
+      HID_REPORT_COUNT( 1                             ),\
+      HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      \
+  HID_COLLECTION_END \
 
 
 typedef struct TU_ATTR_PACKED

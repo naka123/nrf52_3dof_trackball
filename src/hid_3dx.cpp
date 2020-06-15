@@ -2,16 +2,18 @@
 
 bool send_3dx_report1(const int16_t cx, const int16_t cy, const int16_t cz) {
     const auto x = (int16_t)((float)(cx) * SENSOR_T_SCALE);
-    const auto y = (int16_t)((float)(cz) * SENSOR_T_SCALE);
+//    const auto y = (int16_t)((float)(cz) * SENSOR_T_SCALE);
     const auto z = (int16_t)((float)(cy) * SENSOR_T_SCALE);
+
+    const auto rz = (int16_t)((float)(-cz) * SENSOR_R_SCALE);
 
     hid_3dx_report_t report =
             {
                     .x       = x,
-                    .y       = y,
-                    .z       = z,
+                    .y       = 0,
+                    .z       = z, // вперёд/назад
                     .rx       = 0,
-                    .ry       = 0,
+                    .ry       = -rz,
                     .rz       = 0,
             };
 

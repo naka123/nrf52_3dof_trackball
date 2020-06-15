@@ -5,6 +5,12 @@
 #include "paw3204.h"
 #include "hid_3dx.h"
 
+enum {
+    MODE_TRANS2_ROT1 = 1,
+    MODE_ROT_3DOF = 0,
+};
+
+uint8_t mode = MODE_ROT_3DOF;
 
 // HID report descriptor using TinyUSB's template
 // Generic In Out with 64 bytes report (max)
@@ -17,12 +23,45 @@ uint8_t const desc_hid_report[] =
 Adafruit_USBD_HID usb_hid;
 
 
+// Application must fill buffer report's content and return its length.
+// Return zero will cause the stack to STALL request
+uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+{
+    // not used in this example
+    return 0;
+}
+
+void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+{
+    // This example doesn't use multiple report and report ID
+    (void) report_id;
+    (void) report_type;
+
+    printf("set_report_callback report _id: %02x, _type: %02x, _sz: %d\n", report_id, (uint8_t)report_type, bufsize);
+
+    if (!(report_type == HID_REPORT_TYPE_FEATURE && report_id == 0x80) ) {
+        return;
+    }
+
+//    for(uint8_t i=0; i<bufsize; i++) {
+//        printf("%02x ", buffer[i]);
+//    }
+//    printf("\n");
+
+    mode = buffer[1];
+    printf("mode changed to: %d\n", mode);
+
+//     echo back anything we received from host
+//    usb_hid.sendReport(0, buffer, bufsize);
+}
+
+
 void setup()
 {
-//    usb_hid.enableOutEndpoint(true);
+    usb_hid.enableOutEndpoint(true);
     usb_hid.setPollInterval(5);
     usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
-//    usb_hid.setReportCallback(get_report_callback, set_report_callback);
+    usb_hid.setReportCallback(get_report_callback, set_report_callback);
 
     usb_hid.begin();
 
@@ -81,7 +120,11 @@ void loop()
 
 //    printf("mix:  [X] CX=%-4d CY=%-4d CZ=%-4d\n", cx, cy, cz);
 
-    send_3dx_report1(cx, cy, cz);
+    if(mode == MODE_TRANS2_ROT1 ) {
+        send_3dx_report1(cx, cy, cz);
+    } else if( mode == MODE_ROT_3DOF ) {
+        send_3dx_report2(cx, cy, cz);
+    }
 
 }
 
