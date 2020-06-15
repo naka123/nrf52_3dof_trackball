@@ -3,16 +3,15 @@
 
 #include "paw3204.h"
 
-#define CFG_TUD_HID 1
-
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
 
-//    pinMode(D7, OUTPUT);
-//    digitalWrite(D7, 0);
+    init_paw3204(DEV1);
+    set_dpi_paw3204(DEV1, DPI_1600);
 
-    init_paw3204();
+    init_paw3204(DEV2);
+    set_dpi_paw3204(DEV2, DPI_1600);
 
     Serial.begin(115200);
     printf("nrf52 mouse test\n");
@@ -22,25 +21,30 @@ void setup()
 
 paw3204_all_reg dat;
 
+int8_t m1x, m1y, m2x, m2y;
+uint8_t stat1, stat2;
+
+
 void loop()
 {
-//    digitalWrite(LED_BUILTIN, HIGH);
-//    delay(10);
-//    digitalWrite(LED_BUILTIN, LOW);
-//    delay(10);
+    read_paw3204(DEV1, &stat1, &m1x, &m1y);
+    read_paw3204(DEV2, &stat2, &m2x, &m2y);
 
-//    digitalWrite(D7, 1);
-//    delayMicroseconds(20);
-//    digitalWrite(D7, 0);
+    if (stat1&0x80 && (m1x || m1y)) {
+        ledOn(LED_RED);
+    } else {
+        ledOff(LED_RED);
+    };
+
+    if (stat2&0x80 && (m2x || m2y)) {
+        ledOn(LED_GREEN);
+    } else {
+        ledOff(LED_GREEN);
+    };
 
 
-    read_all_paw3204(&dat);
+    printf("read: [1] %02x x=%-4d y=%-4d    [2] %02x x=%-4d y=%-4d\n", stat1, m1x, m1y, stat2, m2x, m2y);
 
-    printf("regs: ");
-    for (uint8_t i=0; i<8; i++) {
-        printf("%d: %02x ", i, dat.reg[i]);
-    }
-    printf("\n");
 
     delay(20);
 
