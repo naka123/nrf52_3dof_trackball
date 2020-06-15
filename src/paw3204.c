@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define REG_X 0x03
 #define REG_Y 0x04
 #define REG_CONFIG 0x06
+#define REG_IMG_QUALITY 0x07
 
 typedef int (*spi_paw3204_t)(const dev_pins pins, uint8_t *p_tx_buffer, size_t tx_length, uint8_t *p_rx_buffer, size_t rx_length, uint8_t cs_pin);
 
@@ -84,13 +85,20 @@ void set_dpi_paw3204(const dev_pins pins, uint8_t bits) {
     spi_paw3204(pins, snd, sizeof(snd), rcv, sizeof(rcv), 0xFF);
 }
 
-int read_paw3204(const dev_pins pins, uint8_t *stat, int8_t *x, int8_t *y) {
+int read_paw3204(const dev_pins pins, uint8_t *stat, uint8_t *qua, int8_t *x, int8_t *y) {
     {
         uint8_t snd[] = {READ(REG_STAT), 0xFF};
         uint8_t rcv[] = {0xFF, 0xFF};
 
         spi_paw3204(pins, snd, sizeof(snd), rcv, sizeof(rcv), 0xFF);
         *stat = rcv[1];
+    }
+    {
+        uint8_t snd[] = {READ(REG_IMG_QUALITY), 0xFF};
+        uint8_t rcv[] = {0xFF, 0xFF};
+
+        spi_paw3204(pins, snd, sizeof(snd), rcv, sizeof(rcv), 0xFF);
+        *qua = rcv[1];
     }
     {
         uint8_t snd[] = {READ(REG_X), 0xFF};
