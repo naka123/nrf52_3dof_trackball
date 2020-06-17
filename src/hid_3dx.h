@@ -28,6 +28,25 @@ enum {
     MODE_TRANS2_ROT1 = 1,
 };
 
+enum {
+    V3DK_MENU       = 0x0001,
+    V3DK_FIT        = 0x0002,
+    V3DK_TOP        = 0x0004,
+    V3DK_RIGHT      = 0x0010,
+    V3DK_V3DK_FRONT = 0x0020,
+    V3DK_ROLL_CW    = 0x0100,
+    V3DK_1          = 0x1000,
+    V3DK_2          = 0x2000,
+    V3DK_3          = 0x4000,
+    V3DK_4          = 0x8000,
+    V3DK_ESC        = 0x00400000,
+    V3DK_ALT        = 0x00800000,
+    V3DK_SHIFT      = 0x01000000,
+    V3DK_CTRL       = 0x02000000,
+    V3DK_ROTATE     = 0x04000000,
+
+};
+
 #define TUD_HID_REPORT_DESC_MULTIAXIS_CONTROLLER() \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )        ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER  )        ,\
