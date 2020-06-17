@@ -27,14 +27,7 @@ const dev_pins DEV2 = {
 .pin_sdio = PIN_D8
 };
 
-//#ifndef PAW3204_SCLK
-//#    define PAW3204_SCLK D7
-//#endif
-//
-//#ifndef PAW3204_DATA
-//#    define PAW3204_DATA D8
-//#endif
-
+const uint8_t SENSOR_PRODUCT_ID1 = 0x30;
 
 const uint8_t DPI_1000 = 0b00;
 const uint8_t DPI_1200 = 0b01;

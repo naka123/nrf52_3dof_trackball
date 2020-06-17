@@ -5,12 +5,7 @@
 #include "paw3204.h"
 #include "hid_3dx.h"
 
-enum {
-    MODE_TRANS2_ROT1 = 1,
-    MODE_ROT_3DOF = 0,
-};
-
-uint8_t mode = MODE_ROT_3DOF;
+#include "RotaryEncoder.h"
 
 // HID report descriptor using TinyUSB's template
 // Generic In Out with 64 bytes report (max)
@@ -19,42 +14,14 @@ uint8_t const desc_hid_report[] =
                 TUD_HID_REPORT_DESC_MULTIAXIS_CONTROLLER( )
         };
 
+//Encoder myEnc(PIN_D19, PIN_D20);
+
 // USB HID object
 Adafruit_USBD_HID usb_hid;
 
+long oldPosition  = -999;
 
-// Application must fill buffer report's content and return its length.
-// Return zero will cause the stack to STALL request
-uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
-{
-    // not used in this example
-    return 0;
-}
-
-void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
-{
-    // This example doesn't use multiple report and report ID
-    (void) report_id;
-    (void) report_type;
-
-    printf("set_report_callback report _id: %02x, _type: %02x, _sz: %d\n", report_id, (uint8_t)report_type, bufsize);
-
-    if (!(report_type == HID_REPORT_TYPE_FEATURE && report_id == 0x80) ) {
-        return;
-    }
-
-//    for(uint8_t i=0; i<bufsize; i++) {
-//        printf("%02x ", buffer[i]);
-//    }
-//    printf("\n");
-
-    mode = buffer[1];
-    printf("mode changed to: %d\n", mode);
-
-//     echo back anything we received from host
-//    usb_hid.sendReport(0, buffer, bufsize);
-}
-
+#define PIN_ENC_BUTTON PIN_D21
 
 void setup()
 {
@@ -65,18 +32,31 @@ void setup()
 
     usb_hid.begin();
 
-
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    init_paw3204(DEV1);
-    set_dpi_paw3204(DEV1, DPI_1600);
-
-    init_paw3204(DEV2);
-    set_dpi_paw3204(DEV2, DPI_1600);
-
     Serial.begin(115200);
     printf("nrf52 mouse test\n");
     printf("---------------------------\n");
+
+    init_paw3204(DEV1);
+    if( read_pid_paw3204(DEV1) != SENSOR_PRODUCT_ID1 ) {
+        Serial.println("failed to init SENSOR1 !!!");
+    }
+    set_dpi_paw3204(DEV1, DPI_1600);
+
+    init_paw3204(DEV2);
+    if( read_pid_paw3204(DEV2) != SENSOR_PRODUCT_ID1 ) {
+        Serial.println("failed to init SENSOR2 !!!");
+    }
+    set_dpi_paw3204(DEV2, DPI_1600);
+
+    // Initialize Encoder
+    RotaryEncoder.begin(PIN_D19, PIN_D20);
+    // Start encoder
+    RotaryEncoder.start();
+
+    setPinInput(PIN_ENC_BUTTON);
+
+    ledOn(LED_GREEN);
+
 
 }
 
@@ -85,29 +65,36 @@ paw3204_all_reg dat;
 int8_t m1x, m1y, m2x, m2y;
 uint8_t stat1, stat2, qua1, qua2;
 
+int encoder_value = 0;
+
 void loop()
 {
-
-    ledOn(LED_BLUE);
+//    ledOn(LED_BLUE);
     while (! usb_hid.ready() ) {
         delay(1);
     }
-    ledOff(LED_BLUE);
+//    ledOff(LED_BLUE);
+
+    int enc_delta = RotaryEncoder.read();
+    if (enc_delta) {
+        encoder_value += enc_delta;
+        printf("encoder: %d\n", encoder_value);
+    }
 
     read_paw3204(DEV1, &stat1, &qua1, &m1x, &m1y);
     read_paw3204(DEV2, &stat2, &qua2, &m2x, &m2y);
 
-    if (stat1&0x80 && (m1x || m1y)) {
-        ledOn(LED_RED);
-    } else {
-        ledOff(LED_RED);
-    };
-
-    if (stat2&0x80 && (m2x || m2y)) {
-        ledOn(LED_GREEN);
-    } else {
-        ledOff(LED_GREEN);
-    };
+//    if (stat1&0x80 && (m1x || m1y)) {
+//        ledOn(LED_RED);
+//    } else {
+//        ledOff(LED_RED);
+//    };
+//
+//    if (stat2&0x80 && (m2x || m2y)) {
+//        ledOn(LED_GREEN);
+//    } else {
+//        ledOff(LED_GREEN);
+//    };
 
     // второй сенсор повёрнут относительно первого на 180 градусов
     m2x = -m2x;
@@ -120,11 +107,18 @@ void loop()
 
 //    printf("mix:  [X] CX=%-4d CY=%-4d CZ=%-4d\n", cx, cy, cz);
 
-    if(mode == MODE_TRANS2_ROT1 ) {
-        send_3dx_report1(cx, cy, cz);
-    } else if( mode == MODE_ROT_3DOF ) {
-        send_3dx_report2(cx, cy, cz);
+    hid_3dx_report_t report;
+
+    if(translation_mode == MODE_TRANS2_ROT1 ) {
+        map_as_2T1Rdof(cx, cy, enc_delta, &report);
+        send_3dx_report_6dof(&report);
+    } else if(translation_mode == MODE_ROT_3DOF ) {
+        map_as_3Rdof_and_zoom(cx, cy, cz, enc_delta, &report);
+        send_3dx_report_6dof(&report);
     }
+
+    send_3dx_report_buttons(digitalRead(PIN_ENC_BUTTON)? 1<<31: 0);
+
 
 }
 
