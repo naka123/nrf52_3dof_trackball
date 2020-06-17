@@ -2,6 +2,8 @@
 // Created by user on 15-Jun-20.
 //
 
+#pragma once
+
 #ifndef NRF52_TEST_HID_3DX_H
 #define NRF52_TEST_HID_3DX_H
 
@@ -13,16 +15,25 @@ extern "C"
 {
 #endif // __cplusplus
 
-const uint8_t REPORT_ID_MODE = 0x80;
-const uint8_t REPORT_ID_R_SCALE = 0x81;
-const uint8_t REPORT_ID_T_SCALE = 0x82;
+enum {
+     REPORT_ID_6DOF = 1,
+     REPORT_ID_BUTTONS = 3,
+     REPORT_ID_MODE = 0x80,
+     REPORT_ID_R_SCALE = 0x81,
+     REPORT_ID_T_SCALE = 0x82,
+};
+
+enum {
+    MODE_ROT_3DOF = 0,
+    MODE_TRANS2_ROT1 = 1,
+};
 
 #define TUD_HID_REPORT_DESC_MULTIAXIS_CONTROLLER() \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )        ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER  )        ,\
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )        ,\
       HID_COLLECTION ( HID_COLLECTION_PHYSICAL )        ,\
-          HID_REPORT_ID       (1 ), \
+          HID_REPORT_ID       ( REPORT_ID_6DOF ) , \
           HID_LOGICAL_MIN_N   ( -500,   2 ),\
           HID_LOGICAL_MAX_N   (  500,    2 ),\
           HID_PHYSICAL_MIN_N ( -32768,  2 ),\
@@ -42,7 +53,7 @@ const uint8_t REPORT_ID_T_SCALE = 0x82;
       HID_COLLECTION_END, \
       /* Buttons */ \
       HID_COLLECTION ( HID_COLLECTION_LOGICAL )        ,\
-          HID_REPORT_ID       (3 ), \
+          HID_REPORT_ID       ( REPORT_ID_BUTTONS ), \
           HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP     )        ,\
           HID_USAGE_PAGE   ( HID_USAGE_PAGE_BUTTON  )        ,\
           HID_USAGE_MIN ( 1 ),\
@@ -57,9 +68,11 @@ const uint8_t REPORT_ID_T_SCALE = 0x82;
       HID_COLLECTION_END, \
       \
       /* Features */ \
+      HID_PUSH, \
       HID_COLLECTION ( 0x80 )  /* vendor */       ,\
-          HID_REPORT_ID       ( REPORT_ID_MODE ), \
           HID_USAGE_PAGE_N ( HID_USAGE_PAGE_VENDOR, 2     )        ,\
+          \
+          HID_REPORT_ID       ( REPORT_ID_MODE ), \
           HID_USAGE      ( 0x1  )        ,\
           HID_LOGICAL_MIN ( 0x00 ),\
           HID_LOGICAL_MAX ( 0xff ),\
@@ -67,22 +80,25 @@ const uint8_t REPORT_ID_T_SCALE = 0x82;
           HID_REPORT_COUNT( 1 ),\
           HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
           \
-          HID_PUSH, \
           HID_REPORT_ID       ( REPORT_ID_R_SCALE ), \
-          HID_USAGE_PAGE_N ( HID_USAGE_PAGE_VENDOR, 2     )        ,\
           HID_USAGE      ( 0x2  )        ,\
           HID_LOGICAL_MIN ( 0 ),\
           HID_LOGICAL_MAX ( 20 ),\
           HID_PHYSICAL_MIN ( 0 ),\
           HID_PHYSICAL_MAX_N ( 2000, 2 ),\
           HID_UNIT ( 0), /* none */ \
-          /* 0x55, 0x0f,  # UNIT_EXPONENT (-1) */ \
+          /* 0x55, 0x0e,  # UNIT_EXPONENT (-2) */ \
           HID_UNIT_EXPONENT ( 0x0e ), \
           HID_REPORT_SIZE ( 16 ),\
           HID_REPORT_COUNT( 1 ),\
           HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
-          HID_POP, \
-      HID_COLLECTION_END, \
+           \
+          HID_REPORT_ID       ( REPORT_ID_T_SCALE ), \
+          HID_USAGE      ( 0x3  )        ,\
+          HID_REPORT_COUNT( 1 ),\
+          HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      HID_COLLECTION_END,\
+      HID_POP, \
       \
   HID_COLLECTION_END \
 
@@ -110,24 +126,34 @@ typedef struct TU_ATTR_PACKED
     int16_t  ry;
     int16_t  rz;
 
-} hid_3dx_report_t;
+} hid_3dx_report_6dof_t;
 
-void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_t *report);
-void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_t *report);
+typedef struct TU_ATTR_PACKED
+{
+    uint8_t  report_id;
+    uint8_t  mode;
+
+} hid_3dx_raw_feature_mode_t;
+
+typedef struct TU_ATTR_PACKED
+{
+    uint8_t  report_id;
+    uint16_t  scale;
+
+} hid_3dx_raw_feature_scale_t;
 
 
-bool send_3dx_report_6dof(const hid_3dx_report_t *report);
+void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_6dof_t *report);
+void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_6dof_t *report);
+
+
+bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);
 bool send_3dx_report_buttons(uint32_t buttons);
 
 
 uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen);
 void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize);
 
-
-enum {
-    MODE_TRANS2_ROT1 = 1,
-    MODE_ROT_3DOF = 0,
-};
 
 extern uint8_t translation_mode;
 

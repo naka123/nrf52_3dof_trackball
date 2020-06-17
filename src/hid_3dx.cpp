@@ -6,7 +6,7 @@ uint8_t translation_mode = MODE_ROT_3DOF;
 float SENSOR_R_SCALE = 1.5f;
 float SENSOR_T_SCALE = 1.5f;
 
-void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_t *report) {
+void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_6dof_t *report) {
     const auto x = (int16_t)((float)(cx) * SENSOR_T_SCALE);
 //    const auto y = (int16_t)((float)(cz) * SENSOR_T_SCALE);
     const auto z = (int16_t)((float)(cy) * SENSOR_T_SCALE);
@@ -22,7 +22,7 @@ void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_t *report
 }
 
 
-void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_t *report) {
+void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_6dof_t *report) {
     const auto rx = (int16_t)((float)(cy) * SENSOR_R_SCALE);
     const auto ry = (int16_t)((float)(-cx) * SENSOR_R_SCALE);
     const auto rz = (int16_t)((float)(-cz) * SENSOR_R_SCALE);
@@ -35,14 +35,13 @@ void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid
     report->rz     = rz;
 }
 
-bool send_3dx_report_6dof(const hid_3dx_report_t *report) {
+bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report) {
     return tud_hid_report(1, report, sizeof(*report));
 }
 
 bool send_3dx_report_buttons(const uint32_t buttons) {
     return tud_hid_report(3, &buttons, 4);
 }
-
 
 // Application must fill buffer report's content and return its length.
 // Return zero will cause the stack to STALL request
@@ -54,31 +53,45 @@ uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, 
 
     if ( report_type == HID_REPORT_TYPE_FEATURE ) {
         switch(report_id) {
-//            case REPORT_ID_MODE:
-//                translation_mode = buffer[1];
-//                printf("mode changed to: %d\n", translation_mode);
-//
-//                ledOff(LED_GREEN);
-//                ledOff(LED_BLUE);;
-//
-//                switch(translation_mode) {
-//                    case MODE_ROT_3DOF:
-//                        ledOn(LED_GREEN);
-//                        break;
-//
-//                    case MODE_TRANS2_ROT1:
-//                        ledOn(LED_BLUE);
-//                        break;
-//                };
-//                break;
+            case REPORT_ID_MODE: {
+                if (sizeof(hid_3dx_raw_feature_mode_t) != reqlen) {
+                    printf("bad reqlen: %d (should be %d)\n", reqlen, sizeof(hid_3dx_raw_feature_scale_t));
+                    return 0;
+                };
 
-            case REPORT_ID_R_SCALE:
-                struct {
-                    uint8_t report_id = REPORT_ID_R_SCALE;
-                    uint16_t scale = uint16_t (SENSOR_R_SCALE*100);
-                } res;
-                memcpy(buffer, &res, sizeof(res));
-                break;
+                hid_3dx_raw_feature_mode_t report_mode = {
+                        .report_id = REPORT_ID_MODE,
+                        .mode = translation_mode
+                };
+                memcpy(buffer, &report_mode, sizeof(report_mode));
+                return sizeof(hid_3dx_raw_feature_scale_t);;
+            }
+            case REPORT_ID_R_SCALE: {
+                if (sizeof(hid_3dx_raw_feature_scale_t) != reqlen) {
+                    printf("bad reqlen: %d (should be %d)\n", reqlen, sizeof(hid_3dx_raw_feature_scale_t));
+                    return 0;
+                };
+
+                hid_3dx_raw_feature_scale_t report_r_scale = {
+                        .report_id = REPORT_ID_R_SCALE,
+                        .scale = (uint16_t) (SENSOR_R_SCALE * 100)
+                };
+                memcpy(buffer, &report_r_scale, sizeof(report_r_scale));
+                return sizeof(report_r_scale);
+            }
+            case REPORT_ID_T_SCALE: {
+                if (sizeof(hid_3dx_raw_feature_scale_t) != reqlen) {
+                    printf("bad reqlen: %d (should be %d)\n", reqlen, sizeof(hid_3dx_raw_feature_scale_t));
+                    return 0;
+                };
+
+                hid_3dx_raw_feature_scale_t report_t_scale = {
+                        .report_id = REPORT_ID_T_SCALE,
+                        .scale = (uint16_t) (SENSOR_T_SCALE * 100)
+                };
+                memcpy(buffer, &report_t_scale, sizeof(report_t_scale));
+                return sizeof(report_t_scale);;
+            }
         }
     }
 
@@ -93,22 +106,19 @@ union f{
 
 void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
-    // This example doesn't use multiple report and report ID
-    (void) report_id;
-    (void) report_type;
 
     printf("set_report_callback report _id: %02x, _type: %02x, _sz: %d\n", report_id, (uint8_t)report_type, bufsize);
 
     if ( report_type == HID_REPORT_TYPE_FEATURE ) {
         switch(report_id) {
-            case REPORT_ID_MODE:
+            case REPORT_ID_MODE: {
                 translation_mode = buffer[1];
                 printf("mode changed to: %d\n", translation_mode);
 
                 ledOff(LED_GREEN);
                 ledOff(LED_BLUE);;
 
-                switch(translation_mode) {
+                switch (translation_mode) {
                     case MODE_ROT_3DOF:
                         ledOn(LED_GREEN);
                         break;
@@ -118,10 +128,26 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
                         break;
                 };
                 break;
-
-            case REPORT_ID_R_SCALE:
-//                printf("REPORT_ID_R_SCALE: %d\n", (f)(buffer).v);
+            }
+            case REPORT_ID_R_SCALE: {
+                if (sizeof(hid_3dx_raw_feature_scale_t) != bufsize) {
+                    printf("bad bufsize: %d (should be %d)\n", bufsize, sizeof(hid_3dx_raw_feature_scale_t));
+                    return;
+                };
+                auto *r1 = (hid_3dx_raw_feature_scale_t *) (buffer);
+                SENSOR_R_SCALE = (float) r1->scale / 100.f;
                 break;
+            }
+            case REPORT_ID_T_SCALE: {
+                if (sizeof(hid_3dx_raw_feature_scale_t) != bufsize) {
+                    printf("bad bufsize: %d (should be %d)\n", bufsize, sizeof(hid_3dx_raw_feature_scale_t));
+                    return;
+                };
+                auto *r2 = (hid_3dx_raw_feature_scale_t *) (buffer);
+                SENSOR_T_SCALE = (float) r2->scale / 100.f;
+                break;
+            }
+
         }
     }
 

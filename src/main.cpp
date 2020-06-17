@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include <Adafruit_USBD_CDC.h>
-#include <Adafruit_USBD_HID.h>
+//#include <Adafruit_USBD_CDC.h>
+//#include <Adafruit_USBD_HID.h>
 
 #include "paw3204.h"
 #include "hid_3dx.h"
@@ -25,6 +25,13 @@ long oldPosition  = -999;
 
 void setup()
 {
+// board_config.update("build.hwids", [
+//    ["0x046D",  "0xC62b" ]
+//])
+//
+//board_config.update("vendor", "Naka")
+//board_config.update("build.usb_product", "SpaceMouse PRO")
+
     usb_hid.enableOutEndpoint(true);
     usb_hid.setPollInterval(5);
     usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
@@ -57,7 +64,6 @@ void setup()
 
     ledOn(LED_GREEN);
 
-
 }
 
 paw3204_all_reg dat;
@@ -71,7 +77,7 @@ void loop()
 {
 //    ledOn(LED_BLUE);
     while (! usb_hid.ready() ) {
-        delay(1);
+        delay(2);
     }
 //    ledOff(LED_BLUE);
 
@@ -79,22 +85,18 @@ void loop()
     if (enc_delta) {
         encoder_value += enc_delta;
         printf("encoder: %d\n", encoder_value);
+        if(translation_mode == MODE_ROT_3DOF ) {
+            SENSOR_R_SCALE += 0.05f * (float) (enc_delta);
+            if (SENSOR_R_SCALE < 0.2) {
+                SENSOR_R_SCALE = 0.2;
+            } else if (SENSOR_R_SCALE > 5) {
+                SENSOR_R_SCALE = 5;
+            }
+        }
     }
 
     read_paw3204(DEV1, &stat1, &qua1, &m1x, &m1y);
     read_paw3204(DEV2, &stat2, &qua2, &m2x, &m2y);
-
-//    if (stat1&0x80 && (m1x || m1y)) {
-//        ledOn(LED_RED);
-//    } else {
-//        ledOff(LED_RED);
-//    };
-//
-//    if (stat2&0x80 && (m2x || m2y)) {
-//        ledOn(LED_GREEN);
-//    } else {
-//        ledOff(LED_GREEN);
-//    };
 
     // второй сенсор повёрнут относительно первого на 180 градусов
     m2x = -m2x;
@@ -107,13 +109,13 @@ void loop()
 
 //    printf("mix:  [X] CX=%-4d CY=%-4d CZ=%-4d\n", cx, cy, cz);
 
-    hid_3dx_report_t report;
+    hid_3dx_report_6dof_t report;
 
     if(translation_mode == MODE_TRANS2_ROT1 ) {
         map_as_2T1Rdof(cx, cy, enc_delta, &report);
         send_3dx_report_6dof(&report);
     } else if(translation_mode == MODE_ROT_3DOF ) {
-        map_as_3Rdof_and_zoom(cx, cy, cz, enc_delta, &report);
+        map_as_3Rdof_and_zoom(cx, cy, cz, 0, &report);
         send_3dx_report_6dof(&report);
     }
 
