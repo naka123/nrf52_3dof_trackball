@@ -1,0 +1,64 @@
+{
+  "build": {
+    "arduino":{
+      "ldscript": "nrf52840_s140_v6.ld"
+    },
+    "core": "nRF5",
+    "cpu": "cortex-m4",
+    "extra_flags": "-DARDUINO_NRF52840_MDK_DONGLE -DNRF52840_XXAA",
+    "f_cpu": "64000000L",
+    "hwids": [
+      [
+        "0x239A",
+        "0x8029"
+      ]
+    ],
+    "usb_product": "NRF52-MDK-DONGLE",
+    "mcu": "nrf52840",
+    "variant": "mdk_nrf52840_dongle",
+    "bsp": {
+      "name": "adafruit"
+    },
+    "softdevice": {
+      "sd_flags": "-DS140",
+      "sd_name": "s140",
+      "sd_version": "6.1.1",
+      "sd_fwid": "0x00B6"
+    },
+    "bootloader": {
+      "settings_addr": "0xFF000"
+    }
+    },
+    "connectivity": [
+      "bluetooth"
+    ],
+    "debug": {
+      "jlink_device": "nRF52840_xxAA",
+      "onboard_tools": [
+        "jlink",
+        "stlink",
+        "cmsis-dap"
+      ],
+      "svd_path": "nrf52840.svd"
+    },
+    "frameworks": [
+      "arduino"
+    ],
+    "name": "Nordic nRF52840-MDK-DONGLE (Adafruit BSP)",
+    "upload": {
+      "maximum_ram_size": 248832,
+      "maximum_size": 815104,
+      "require_upload_port": true,
+      "speed": 115200,
+      "protocol": "nrfutil",
+      "protocols": [
+        "jlink",
+        "nrfjprog",
+        "nrfutil",
+        "stlink",
+        "cmsis-dap"
+      ]
+    },
+    "url": "https://wiki.makerdiary.com/nrf52840-mdk-usb-dongle/",
+    "vendor": "Makerdiary"
+  }
