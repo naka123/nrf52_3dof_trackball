@@ -1,20 +1,15 @@
-#include <stdio.h>
+#include <string.h>
 #include <Arduino.h>
 #include <SEGGER_SYSVIEW.h>
 #include <Adafruit_USBD_CDC.h>
 #include <Adafruit_USBD_HID.h>
 #include <SEGGER_RTT.h>
+#include "RotaryEncoder.h"
 
 #include "paw3204.h"
 #include "hid_3dx.h"
+#include "gyro.h"
 
-#include "RotaryEncoder.h"
-
-#include <Wire.h>
-#include "Adafruit_MPU6050.h"
-
-Adafruit_MPU6050 mpu;
-Adafruit_Sensor *mpu_temp, *mpu_accel, *mpu_gyro;
 
 
 // HID report descriptor using TinyUSB's template
@@ -41,7 +36,6 @@ void setup()
 //
 //board_config.update("vendor", "Naka")
 //board_config.update("build.usb_product", "SpaceMouse PRO")
-    Wire.setClock(400000);
 
     usb_hid.enableOutEndpoint(true);
     usb_hid.setPollInterval(5);
@@ -76,21 +70,7 @@ void setup()
 
     ledOn(LED_GREEN);
 
-    if (!mpu.begin()) {
-        SEGGER_RTT_printf(0, "Failed to find MPU6050 chip\n");
-    };
-
-    mpu.enableCycle(true);
-    mpu.setCycleRate(MPU6050_CYCLE_40_HZ);
-
-    mpu_temp = mpu.getTemperatureSensor();
-//    mpu_temp->printSensorDetails();
-
-    mpu_accel = mpu.getAccelerometerSensor();
-//    mpu_accel->printSensorDetails();
-
-    mpu_gyro = mpu.getGyroSensor();
-//    mpu_gyro->printSensorDetails();
+    Gyro.init();
 
     SEGGER_RTT_printf(0, "setup end\n");
 
@@ -144,46 +124,82 @@ long oldPosition  = -999;
 //}
 
 
-uint32_t prev_mpu_millis = 0;
+float prev_angles[3] = {0,0,0};
 
-sensors_event_t accel;
-sensors_event_t gyro;
-sensors_event_t temp;
+uint32_t t_gyro_prev = 0;
 
-char tmp[128];
+uint32_t do_encoder();
+
+bool zero_motion_sent = true;
 
 void loop()
 {
 //    SEGGER_RTT_printf(0, "loop tick\n");
 
+    uint32_t enc_delta = do_encoder();
 //    ledOn(LED_BLUE);
+//    ledOff(LED_BLUE);
+
     while (! usb_hid.ready() ) {
         delay(2);
     }
-//    ledOff(LED_BLUE);
-
-    if (millis() - prev_mpu_millis > 40) {
-//        mpu_temp->getEvent(&temp);
-//        mpu_accel->getEvent(&accel);
-//        mpu_gyro->getEvent(&gyro);
-        if (mpu.getEvent(&accel, &gyro, &temp)) {
-            sprintf(tmp, "Temperature: %.3f deg C\n\0", temp.temperature);
-            SEGGER_RTT_printf(0, tmp);
-            sprintf(tmp, "Accel: X:%.3f Y:%.3f Z:%.3f m/s^\n\0", accel.acceleration.x, accel.acceleration.y,
-                    accel.acceleration.z);
-            SEGGER_RTT_printf(0, tmp);
-            sprintf(tmp, "Gyro: X:%.3f Y:%.3f Z:%.3f radians/s^\n\0", gyro.gyro.x, gyro.gyro.y, gyro.gyro.z);
-            SEGGER_RTT_printf(0, tmp);
-
-            prev_mpu_millis = millis();
-        } else {
-            SEGGER_RTT_printf(0, "MPU getEvent failed!\n");
-        }
 
 
+    if (Gyro.update_from_mpu() ) {
+
+            float xyz[3];
+            Gyro.get_angles(xyz);
+
+            float dx = xyz[0] - prev_angles[0];
+            float dy = xyz[1] - prev_angles[1];
+            float dz = xyz[2] - prev_angles[2];
+            send_motion(-dy * 10, -dz*10, -dx*10, 0);
+            prev_angles[0] = xyz[0];
+            prev_angles[1] = xyz[1];
+            prev_angles[2] = xyz[2];
+
+//            send_motion(xyz[1] / 4, -xyz[2] / 4, xyz[0] / 4, 0);
+
+            return;
+
+    };
+
+
+    read_paw3204_status(DEV1, &stat1);
+    read_paw3204_status(DEV2, &stat2);
+
+    // если никаких изменений нет - можно ничего не посылать
+    if (stat1 & 0x80 || stat2 & 0x80) {
+
+        zero_motion_sent = false;
+
+        read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
+        yield();
+        read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
+        yield();
+
+        // второй сенсор повёрнут относительно первого на 180 градусов
+        m2x = -m2x;
+        m2y = -m2y;
+
+        const int16_t cx = m1x + m2x;
+        const int16_t cy = (m1y + m2y) / 2;
+        const int16_t cz = (m1x - m2x);
+
+        send_motion(cx, cy, cz, enc_delta);
+
+    } else if (!zero_motion_sent) {
+        send_motion(0, 0, 0, 0);
+        zero_motion_sent = true;
     }
 
 
+    delay( 1 );
+
+
+}
+
+uint32_t do_encoder() {
     uint8_t cur_btn = digitalRead(PIN_ENC_BUTTON);
     if (cur_btn != prev_btn) {
         prev_btn = cur_btn;
@@ -192,6 +208,9 @@ void loop()
 //        return;
 
         if (cur_btn) {
+
+            Gyro.reset_origin();
+
             ledOff(LED_RED);
             ledOff(LED_GREEN);
             ledOff(LED_BLUE);;
@@ -214,8 +233,6 @@ void loop()
 
     }
 
-//    upd_btn();
-
     int enc_delta = RotaryEncoder.read();
     if (enc_delta) {
         encoder_value += enc_delta;
@@ -230,24 +247,7 @@ void loop()
         }
     }
 
-    read_paw3204(DEV1, &stat1, &qua1, &m1x, &m1y);
-    yield();
-    read_paw3204(DEV2, &stat2, &qua2, &m2x, &m2y);
-    yield();
-
-    // второй сенсор повёрнут относительно первого на 180 градусов
-    m2x = -m2x;
-    m2y = -m2y;
-
-    const int16_t cx = m1x + m2x;
-    const int16_t cy = (m1y + m2y) / 2;
-    const int16_t cz = (m1x - m2x);
-
-    send_motion(cx, cy, cz, enc_delta);
-
-//    while (! usb_hid.ready() ) {
-//        delay(2);
-//    }
+    return enc_delta;
 
 }
 

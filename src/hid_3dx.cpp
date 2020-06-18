@@ -67,12 +67,24 @@ void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_rep
 }
 
 
+bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, int16_t gy, int16_t gz) {
+    hid_3dx_report_raw_gyro_t report = {
+            .ax = ax,
+            .ay = ay,
+            .az = az,
+            .gx = gx,
+            .gy = gy,
+            .gz = gz
+    };
+    return tud_hid_report(REPORT_ID_RAW_GYRO, &report, sizeof(report));
+};
+
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report) {
-    return tud_hid_report(1, report, sizeof(*report));
+    return tud_hid_report(REPORT_ID_6DOF, report, sizeof(*report));
 }
 
 bool send_3dx_report_buttons(const uint32_t buttons) {
-    return tud_hid_report(3, &buttons, 4);
+    return tud_hid_report(REPORT_ID_BUTTONS, &buttons, 4);
 }
 
 // Application must fill buffer report's content and return its length.

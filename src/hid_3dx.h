@@ -21,6 +21,8 @@ enum {
      REPORT_ID_MODE = 0x80,
      REPORT_ID_R_SCALE = 0x81,
      REPORT_ID_T_SCALE = 0x82,
+
+    REPORT_ID_RAW_GYRO = 0x83,
 };
 
 enum {
@@ -87,10 +89,18 @@ enum {
           HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),\
       HID_COLLECTION_END, \
       \
-      /* Features */ \
+      /* Vendor */ \
       HID_PUSH, \
       HID_COLLECTION ( 0x80 )  /* vendor */       ,\
           HID_USAGE_PAGE_N ( HID_USAGE_PAGE_VENDOR, 2     )        ,\
+          \
+          HID_REPORT_ID       ( REPORT_ID_RAW_GYRO ), \
+          HID_USAGE      ( 0x1  )        ,\
+          HID_LOGICAL_MIN ( 0x00 ),\
+          HID_LOGICAL_MAX ( 0xff ),\
+          HID_REPORT_SIZE ( 16 ),\
+          HID_REPORT_COUNT( 6 ),\
+          HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
           \
           HID_REPORT_ID       ( REPORT_ID_MODE ), \
           HID_USAGE      ( 0x1  )        ,\
@@ -163,6 +173,18 @@ typedef struct TU_ATTR_PACKED
 } hid_3dx_raw_feature_scale_t;
 
 
+typedef struct TU_ATTR_PACKED
+{
+    int16_t  ax;
+    int16_t  ay;
+    int16_t  az;
+    int16_t  gx;
+    int16_t  gy;
+    int16_t  gz;
+
+} hid_3dx_report_raw_gyro_t;
+
+
 void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc);
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
@@ -171,6 +193,7 @@ void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_rep
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);
 bool send_3dx_report_buttons(uint32_t buttons);
+bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, int16_t gy, int16_t gz);
 
 
 uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen);

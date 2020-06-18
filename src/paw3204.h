@@ -37,11 +37,12 @@ typedef union {
     uint8_t reg[8];
 } paw3204_all_reg;
 
-uint8_t read_pid_paw3204(const dev_pins pins);
-void    init_paw3204(const dev_pins pins);
-int     read_paw3204(const dev_pins pins, uint8_t *stat, uint8_t *qua, int8_t *x, int8_t *y);
-void    read_all_paw3204(const dev_pins pins, paw3204_all_reg *dat);
-void    set_dpi_paw3204(const dev_pins pins, uint8_t bits);
+uint8_t read_pid_paw3204(dev_pins pins);
+void    init_paw3204(dev_pins pins);
+int     read_paw3204_status(dev_pins pins, uint8_t *stat);
+int     read_paw3204_data(dev_pins pins, uint8_t *qua, int8_t *x, int8_t *y);
+void    read_all_paw3204(dev_pins pins, paw3204_all_reg *dat);
+void    set_dpi_paw3204(dev_pins pins, uint8_t bits);
 
 #ifdef __cplusplus
 }
