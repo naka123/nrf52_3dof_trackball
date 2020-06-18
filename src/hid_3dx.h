@@ -26,6 +26,7 @@ enum {
 enum {
     MODE_ROT_3DOF = 0,
     MODE_TRANS2_ROT1 = 1,
+    MODE_ROT_2DOF = 2,
 };
 
 enum {
@@ -162,8 +163,10 @@ typedef struct TU_ATTR_PACKED
 } hid_3dx_raw_feature_scale_t;
 
 
-void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_6dof_t *report);
-void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_6dof_t *report);
+void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc);
+void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
+void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
+void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
 
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);

@@ -6,34 +6,66 @@ uint8_t translation_mode = MODE_ROT_3DOF;
 float SENSOR_R_SCALE = 1.5f;
 float SENSOR_T_SCALE = 1.5f;
 
-void map_as_2T1Rdof(int16_t cx, int16_t cy, int16_t cz, hid_3dx_report_6dof_t *report) {
-    const auto x = (int16_t)((float)(cx) * SENSOR_T_SCALE);
-//    const auto y = (int16_t)((float)(cz) * SENSOR_T_SCALE);
-    const auto z = (int16_t)((float)(cy) * SENSOR_T_SCALE);
+void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
 
-    const auto rz = (int16_t)((float)(-cz) * SENSOR_R_SCALE);
+    hid_3dx_report_6dof_t report;
+
+    if(translation_mode == MODE_TRANS2_ROT1 ) {
+        map_as_2T1Rdof(dx, dy, d_enc, &report);
+    } else if(translation_mode == MODE_ROT_3DOF ) {
+        map_as_3Rdof_and_zoom(dx, dy, dz, 0, &report);
+    }  else if(translation_mode == MODE_ROT_2DOF ) {
+        map_as_2Rdof(dx, dy, dz, 0, &report);
+    } else {
+        return;
+    }
+
+    send_3dx_report_6dof(&report);
+}
+
+void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report) {
+    const auto x = (int16_t)((float)(dx) * SENSOR_T_SCALE);
+//    const auto y = (int16_t)((float)(cz) * SENSOR_T_SCALE);
+    const auto z = (int16_t)((float)(dy) * SENSOR_T_SCALE);
+
+    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE);
 
     report->x       = x; // влево/вправо
     report->y       = 0; // на себя/от себя
     report->z       = z; // вверх/вниз
     report->rx       = 0;
-    report->ry       = -rz;
+    report->ry       = -rz * 10;
     report->rz       = 0;
 }
 
 
-void map_as_3Rdof_and_zoom(int16_t cx, int16_t cy, int16_t cz, int16_t zoom, hid_3dx_report_6dof_t *report) {
-    const auto rx = (int16_t)((float)(cy) * SENSOR_R_SCALE);
-    const auto ry = (int16_t)((float)(-cx) * SENSOR_R_SCALE);
-    const auto rz = (int16_t)((float)(-cz) * SENSOR_R_SCALE);
+void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report) {
+    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE);
+    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE);
+    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE);
 
     report->x       = 0;
-    report->y       = zoom;
+    report->y       = d_enc;
     report->z       = 0;
     report->rx     = rx;
     report->ry     = ry;
     report->rz     = rz;
 }
+
+
+void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report) {
+    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE);
+    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE);
+    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE);
+
+    report->x       = 0;
+    report->y       = 0;
+    report->z       = 0;
+    report->rx     = rx; // pitch
+    report->ry     = ry; // roll
+    report->rz     = 0; // yaw
+}
+
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report) {
     return tud_hid_report(1, report, sizeof(*report));
