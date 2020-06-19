@@ -58,15 +58,17 @@ void GYRO::init() {
 
 char tmp[128];
 
-Quaternion GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
+void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
-    const float gx = ((float)raw_x) / scale_gyro;
-    const float gy = ((float)raw_y) / scale_gyro;
-    const float gz = ((float)raw_z) / scale_gyro;
+//    const float gx = ((float)raw_x) / scale_gyro;
+//    const float gy = ((float)raw_y) / scale_gyro;
+//    const float gz = ((float)raw_z) / scale_gyro;
 
-    const float Wx = gx / 180 * PI * dt_gyro;
-    const float Wy = gy / 180 * PI * dt_gyro;
-    const float Wz = gz / 180 * PI * dt_gyro;
+    const float scale_gyro_all = 1.f / scale_gyro / 180 * PI * dt_gyro;
+
+    const float Wx = (float)raw_x * scale_gyro_all;
+    const float Wy = (float)raw_y * scale_gyro_all;
+    const float Wz = (float)raw_z * scale_gyro_all;
 
     const float Qw = gyro_q.w, Qx = gyro_q.x, Qy = gyro_q.y, Qz = gyro_q.z;
 
@@ -77,6 +79,8 @@ Quaternion GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
     Quaternion Q1 = Quaternion(Qw1/2, Qx1/2, Qy1/2, Qz1/2);
 
+    Quaternion gyro_q_prev = Quaternion(gyro_q);
+
     gyro_q.w += Q1.w;
     gyro_q.x += Q1.x;
     gyro_q.y += Q1.y;
@@ -84,22 +88,23 @@ Quaternion GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
     gyro_q.normalize();
 
-    Quaternion gyro_q_centered_new = gyro_q.getProduct(gyro_q_center);
+//    Quaternion gyro_q_centered = gyro_q * gyro_q_center.getConjugate();
 
-    dq = gyro_q_centered_new.getProduct( gyro_q_centered.getConjugate() );
+    Quaternion dq = gyro_q * gyro_q_prev.getConjugate();
+    gyro_q_delta_accumulated = gyro_q_delta_accumulated * dq;
 
-    gyro_q_centered = gyro_q_centered_new;
-    return dq;
 }
 
 bool GYRO::update_from_mpu() {
 
-    if (millis() - prev_mpu_millis < 5) return false;
-    prev_mpu_millis = millis();
+//    if (millis() - prev_mpu_millis < 5) return false;
+//    prev_mpu_millis = millis();
 
     // читаю довольно часто, и фифо может оказаться пустым
     uint8_t buffer[12];
-    if (! mpu.GetCurrentFIFOPacket(buffer, sizeof(buffer))) return false;
+    if (! mpu.GetCurrentFIFOPacket(buffer, sizeof(buffer))) {
+        return false;
+    }
 
 
     int16_t accel_x = (((int16_t) buffer[0]) << 8) | buffer[1];
@@ -109,23 +114,21 @@ bool GYRO::update_from_mpu() {
     int16_t gyro_y = (((int16_t) buffer[8]) << 8) | buffer[9];
     int16_t gyro_z = (((int16_t) buffer[10]) << 8) | buffer[11];
 
+//    printf("Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
+//           accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+
+
     if (send_raw_gyro) {
-        sprintf(tmp, "Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
-                accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+//        sprintf(tmp, "Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
+//                accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+//
+//        SEGGER_RTT_printf(0, tmp);
 
-        SEGGER_RTT_printf(0, tmp);
-
-        send_3dx_report_raw_gyro(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+//        send_3dx_report_raw_gyro(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
     }
 //            send_motion(gyro_x/10, gyro_y/10, gyro_z/10, 0);
 //            delay(1);
 //            return;
-
-
-    if (state_gyro == GYRO_ST_INITIAL) {
-        state_gyro = GYRO_ST_RUNNING;
-    }
-
 
 
     gyro_q_update(gyro_x, gyro_y, gyro_z);
@@ -151,15 +154,23 @@ void GYRO::get_angles(float *xyz) {
 
 }
 
-void GYRO::get_delta_angles(float *xyz) {
-    float ypr[3];
+bool GYRO::get_delta_angles(float *xyz) {
 
-    GetEuler(ypr, &dq);
+    // identity
+    if (gyro_q_delta_accumulated == Quaternion()) {
+        return false;
+    }
+
+    float ypr[3];
+    GetEuler(ypr, &gyro_q_delta_accumulated);
     ConvertToDegrees(ypr, xyz);
 
-//    sprintf(tmp, "Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
+    gyro_q_delta_accumulated = Quaternion();
+
+//    printf("Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
 //            xyz[0], xyz[1], xyz[2]);
-//
+
 //    SEGGER_RTT_printf(0, tmp);
+    return true;
 
 }

@@ -24,6 +24,37 @@ uint8_t const desc_hid_report[] =
 // USB HID object
 Adafruit_USBD_HID usb_hid;
 
+#define STACK_SZ       (256*4)
+
+static TaskHandle_t  _bsensHandle;
+
+[[noreturn]] static void ball_task(void* arg) {
+    (void) arg;
+
+    while(true) {
+        yield();
+        delay(1);
+    }
+
+}
+
+static TaskHandle_t  _gyroHandle;
+
+[[noreturn]] static void gyro_task(void* arg) {
+    (void) arg;
+
+    Gyro.init();
+    Gyro.enableSendRawGyro(true);
+
+    while(true) {
+        Gyro.update_from_mpu();
+//        yield();
+        delay(4);
+    }
+
+}
+
+
 #define PIN_ENC_BUTTON PIN_D21
 
 uint8_t prev_btn;
@@ -38,7 +69,7 @@ void setup()
 //board_config.update("build.usb_product", "SpaceMouse PRO")
 
     usb_hid.enableOutEndpoint(true);
-    usb_hid.setPollInterval(5);
+    usb_hid.setPollInterval(4);
     usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     usb_hid.setReportCallback(get_report_callback, set_report_callback);
 
@@ -70,12 +101,17 @@ void setup()
 
     ledOn(LED_GREEN);
 
-    Gyro.init();
-    Gyro.enableSendRawGyro(true);
-
     SEGGER_RTT_printf(0, "setup end\n");
 
+
+    xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_LOW, &_bsensHandle);
+    xTaskCreate(gyro_task, "gyro", STACK_SZ, NULL, TASK_PRIO_LOW, &_gyroHandle);
+
 }
+
+
+
+
 
 paw3204_all_reg dat;
 
@@ -127,11 +163,13 @@ long oldPosition  = -999;
 
 float prev_angles[3] = {0,0,0};
 
-uint32_t t_gyro_prev = 0;
-
 uint32_t do_encoder();
 
 bool zero_motion_sent = true;
+
+const int USB_WAIT_DELAY_MS = 2;
+
+uint32_t t_gyro_send_prev = 0;
 
 void loop()
 {
@@ -142,47 +180,36 @@ void loop()
 //    ledOff(LED_BLUE);
 
     while (! usb_hid.ready() ) {
-        delay(2);
+        delay(USB_WAIT_DELAY_MS);
     }
 
+    uint32_t m = millis();
 
-    while (! usb_hid.ready() ) {
-        delay(2);
-    }
+    if ( m - t_gyro_send_prev > 10 ) {
 
+        t_gyro_send_prev = m;
 
-    if (Gyro.update_from_mpu() ) {
+        float xyz[3];
+        if (Gyro.get_delta_angles(xyz)) {
 
-            float xyz[3];
-            Gyro.get_delta_angles(xyz);
+//        printf("angles loop: %5.2f\t%5.2f\t%5.2f\n", xyz[0], xyz[1], xyz[2]);
 
-//            float dx = xyz[0] - prev_angles[0];
-//            float dy = xyz[1] - prev_angles[1];
-//            float dz = xyz[2] - prev_angles[2];
+            int16_t dx = xyz[1] * 10;
+            int16_t dy = -xyz[2] * 10;
+            int16_t dz = xyz[0] * 10;
 
-            while (! usb_hid.ready() ) {
-                delay(2);
+            if (dx != 0 || dy != 0 || dz != 0) {
+                send_motion(dx, dy, dz, 0);
+
+//                printf("send_motion: %5d\t%5d\t%5d\n", dx, dy, dz);
+
+                while (!usb_hid.ready()) {
+                    delay(USB_WAIT_DELAY_MS);
+                }
             }
 
-//            GetEuler(Gyro.dq);
-
-            //send_motion(0, 0, -xyz[0] * 10, 0);
-            send_motion(0, xyz[1] * 10, 0, 0);
-
-//            prev_angles[0] = xyz[0];
-//            prev_angles[1] = xyz[1];
-//            prev_angles[2] = xyz[2];
-//
-//            send_motion(xyz[1] / 4, -xyz[2] / 4, xyz[0] / 4, 0);
-
-            return;
-
-    };
-
-    while (! usb_hid.ready() ) {
-        delay(2);
+        }
     }
-
 
     read_paw3204_status(DEV1, &stat1);
     read_paw3204_status(DEV2, &stat2);
@@ -192,10 +219,10 @@ void loop()
 
         zero_motion_sent = false;
 
+        yield();
         read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
         yield();
         read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
-        yield();
 
         // второй сенсор повёрнут относительно первого на 180 градусов
         m2x = -m2x;
@@ -210,10 +237,9 @@ void loop()
     } else if (!zero_motion_sent) {
         send_motion(0, 0, 0, 0);
         zero_motion_sent = true;
+    } else {
+        delay(1);
     }
-
-
-    delay( 1 );
 
 
 }

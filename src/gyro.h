@@ -32,7 +32,7 @@ public:
     bool update_from_mpu();
     void reset_origin();
     void get_angles(float *ypr);
-    void get_delta_angles(float *ypr);
+    bool get_delta_angles(float *ypr);
     void enableSendRawGyro(bool enable) { send_raw_gyro = enable; }
 
 private:
@@ -57,13 +57,13 @@ private:
     Quaternion gyro_q_center = Quaternion();
     Quaternion gyro_q = Quaternion();
     Quaternion gyro_q_centered = Quaternion();
-    Quaternion dq = Quaternion();
+    Quaternion gyro_q_delta_accumulated = Quaternion();
 
     int32_t state_gyro = GYRO_ST_INITIAL;
 
     uint32_t prev_mpu_millis = 0;
 
-    Quaternion gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z);
+    void gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z);
 
 
 };

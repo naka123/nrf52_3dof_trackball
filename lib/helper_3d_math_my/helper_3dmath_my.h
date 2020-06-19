@@ -58,11 +58,11 @@ class Quaternion {
             z = nz;
         }
 
-        Quaternion(float angle, VectorFloat &axis) {
+//        Quaternion(float angle, VectorFloat &axis) {
+//
+//        }
 
-        }
-
-        Quaternion getProduct(Quaternion q) {
+        Quaternion getProduct(Quaternion q) const {
             // Quaternion multiplication is defined by:
             //     (Q1 * Q2).w = (w1w2 - x1x2 - y1y2 - z1z2)
             //     (Q1 * Q2).x = (w1x2 + x1w2 + y1z2 - z1y2)
@@ -75,11 +75,11 @@ class Quaternion {
                 w*q.z + x*q.y - y*q.x + z*q.w); // new z
         }
 
-        Quaternion getConjugate() {
+        Quaternion getConjugate() const {
             return Quaternion(w, -x, -y, -z);
         }
         
-        float getMagnitude() {
+        float getMagnitude() const {
             return sqrt(w*w + x*x + y*y + z*z);
         }
         
@@ -91,7 +91,7 @@ class Quaternion {
             z /= m;
         }
         
-        Quaternion getNormalized() {
+        Quaternion getNormalized() const {
             Quaternion r(w, x, y, z);
             r.normalize();
             return r;
@@ -99,6 +99,15 @@ class Quaternion {
 
         float toAngleAxis(VectorFloat &axis) const;
         static Quaternion fromAngleAxis(float angle, VectorFloat &axis);
+
+        bool operator ==(const Quaternion& other) const {
+            return w == other.w && x == other.x && y == other.y && z == other.z;
+        };
+
+        Quaternion operator *(const Quaternion& other) const {
+            return getProduct(other);
+        };
+
 
 };
 
