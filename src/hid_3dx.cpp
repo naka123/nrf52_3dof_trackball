@@ -12,15 +12,18 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
 
     if(translation_mode == MODE_TRANS2_ROT1 ) {
         map_as_2T1Rdof(dx, dy, d_enc, &report);
+        send_3dx_report_6dof(&report);
     } else if(translation_mode == MODE_ROT_3DOF ) {
         map_as_3Rdof_and_zoom(dx, dy, dz, 0, &report);
+        send_3dx_report_6dof(&report);
     }  else if(translation_mode == MODE_ROT_2DOF ) {
-        map_as_2Rdof(dx, dy, dz, 0, &report);
+//        map_as_2Rdof(dx, dy, dz, 0, &report);
+        tud_hid_mouse_report(REPORT_ID_MOUSE, 0, dx/2, dy/2, 0, 0);
     } else {
         return;
     }
 
-    send_3dx_report_6dof(&report);
+
 }
 
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report) {

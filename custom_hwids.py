@@ -3,7 +3,7 @@ Import("env")
 board_config = env.BoardConfig()
 
 board_config.update("build.hwids", [
-    ["0x046D",  "0xC62b" ]
+    ["0x046D",  "0xC62B" ]
 ])
 
 board_config.update("vendor", "Naka")

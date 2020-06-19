@@ -190,8 +190,7 @@ void loop()
         t_gyro_send_prev = m;
 
         float xyz[3];
-        if (Gyro.get_delta_angles(xyz)) {
-
+        if (Gyro.get_delta_angles(xyz) && translation_mode != MODE_ROT_2DOF) {
 //        printf("angles loop: %5.2f\t%5.2f\t%5.2f\n", xyz[0], xyz[1], xyz[2]);
 
             int16_t dx = xyz[1] * 10;
