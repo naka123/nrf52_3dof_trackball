@@ -16,6 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "paw3204.h"
+#include "nrf_nvic.h"
 
 
 #define READ(addr) (addr)
@@ -37,6 +38,10 @@ int spi_soft_half_duplex(const dev_pins pins, uint8_t *p_tx_buffer, size_t tx_le
         return 1;
     }
 
+    taskENTER_CRITICAL();
+    uint8_t is_nested;
+    sd_nvic_critical_region_enter(&is_nested);
+
     writePin(pins.pin_sdio, readPin(pins.pin_sdio));
     setPinOutput(pins.pin_sdio);
 
@@ -55,6 +60,9 @@ int spi_soft_half_duplex(const dev_pins pins, uint8_t *p_tx_buffer, size_t tx_le
         writePinHigh(pins.pin_sclk);
         p_rx_buffer[1] |= readPin(pins.pin_sdio) << idx;
     }
+
+    sd_nvic_critical_region_exit(is_nested);
+    taskEXIT_CRITICAL();
 
     return 0;
 }
