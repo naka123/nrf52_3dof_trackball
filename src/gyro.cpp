@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include "gyro.h"
 #include <SEGGER_RTT.h>
+#include "hid_3dx.h"
 
 const float radians_to_degrees = 180.0 / M_PI;
 
@@ -26,6 +27,9 @@ void ConvertToDegrees(float*ypr, float*xyz) {
 GYRO Gyro;
 
 void GYRO::init() {
+
+    drift_q = Quaternion::fromAngleAxis(drift_angle, drift_axis);
+
     Wire.begin();
     Wire.setClock(400000);
 
@@ -54,11 +58,11 @@ void GYRO::init() {
 
 char tmp[128];
 
-void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
+Quaternion GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
-    const float gx = ((float)raw_x + GYRO_X_TRIM) / scale_gyro;
-    const float gy = ((float)raw_y + GYRO_Y_TRIM) / scale_gyro;
-    const float gz = ((float)raw_z + GYRO_Z_TRIM) / scale_gyro;
+    const float gx = ((float)raw_x) / scale_gyro;
+    const float gy = ((float)raw_y) / scale_gyro;
+    const float gz = ((float)raw_z) / scale_gyro;
 
     const float Wx = gx / 180 * PI * dt_gyro;
     const float Wy = gy / 180 * PI * dt_gyro;
@@ -80,7 +84,12 @@ void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
     gyro_q.normalize();
 
-    gyro_q_centered = gyro_q.getProduct(gyro_q_center);
+    Quaternion gyro_q_centered_new = gyro_q.getProduct(gyro_q_center);
+
+    dq = gyro_q_centered_new.getProduct( gyro_q_centered.getConjugate() );
+
+    gyro_q_centered = gyro_q_centered_new;
+    return dq;
 }
 
 bool GYRO::update_from_mpu() {
@@ -93,14 +102,21 @@ bool GYRO::update_from_mpu() {
     if (! mpu.GetCurrentFIFOPacket(buffer, sizeof(buffer))) return false;
 
 
-//    int16_t accel_x = (((int16_t) buffer[0]) << 8) | buffer[1];
-//    int16_t accel_y = (((int16_t) buffer[2]) << 8) | buffer[3];
-//    int16_t accel_z = (((int16_t) buffer[4]) << 8) | buffer[5];
+    int16_t accel_x = (((int16_t) buffer[0]) << 8) | buffer[1];
+    int16_t accel_y = (((int16_t) buffer[2]) << 8) | buffer[3];
+    int16_t accel_z = (((int16_t) buffer[4]) << 8) | buffer[5];
     int16_t gyro_x = (((int16_t) buffer[6]) << 8) | buffer[7];
     int16_t gyro_y = (((int16_t) buffer[8]) << 8) | buffer[9];
     int16_t gyro_z = (((int16_t) buffer[10]) << 8) | buffer[11];
 
-//            send_3dx_report_raw_gyro(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+    if (send_raw_gyro) {
+        sprintf(tmp, "Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
+                accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+
+        SEGGER_RTT_printf(0, tmp);
+
+        send_3dx_report_raw_gyro(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
+    }
 //            send_motion(gyro_x/10, gyro_y/10, gyro_z/10, 0);
 //            delay(1);
 //            return;
@@ -111,10 +127,6 @@ bool GYRO::update_from_mpu() {
     }
 
 
-//        sprintf(tmp, "Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\t dt=%u\n\0",
-//                accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, dt);
-//
-//        SEGGER_RTT_printf(0, tmp);
 
     gyro_q_update(gyro_x, gyro_y, gyro_z);
 
@@ -132,9 +144,22 @@ void GYRO::get_angles(float *xyz) {
     GetEuler(ypr, &gyro_q_centered);
     ConvertToDegrees(ypr, xyz);
 
-        sprintf(tmp, "Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
-                xyz[0], xyz[1], xyz[2]);
+//        sprintf(tmp, "Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
+//                xyz[0], xyz[1], xyz[2]);
+//
+//        SEGGER_RTT_printf(0, tmp);
 
-        SEGGER_RTT_printf(0, tmp);
+}
+
+void GYRO::get_delta_angles(float *xyz) {
+    float ypr[3];
+
+    GetEuler(ypr, &dq);
+    ConvertToDegrees(ypr, xyz);
+
+//    sprintf(tmp, "Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
+//            xyz[0], xyz[1], xyz[2]);
+//
+//    SEGGER_RTT_printf(0, tmp);
 
 }

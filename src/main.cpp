@@ -71,6 +71,7 @@ void setup()
     ledOn(LED_GREEN);
 
     Gyro.init();
+    Gyro.enableSendRawGyro(true);
 
     SEGGER_RTT_printf(0, "setup end\n");
 
@@ -145,24 +146,42 @@ void loop()
     }
 
 
+    while (! usb_hid.ready() ) {
+        delay(2);
+    }
+
+
     if (Gyro.update_from_mpu() ) {
 
             float xyz[3];
-            Gyro.get_angles(xyz);
+            Gyro.get_delta_angles(xyz);
 
-            float dx = xyz[0] - prev_angles[0];
-            float dy = xyz[1] - prev_angles[1];
-            float dz = xyz[2] - prev_angles[2];
-            send_motion(-dy * 10, -dz*10, -dx*10, 0);
-            prev_angles[0] = xyz[0];
-            prev_angles[1] = xyz[1];
-            prev_angles[2] = xyz[2];
+//            float dx = xyz[0] - prev_angles[0];
+//            float dy = xyz[1] - prev_angles[1];
+//            float dz = xyz[2] - prev_angles[2];
 
+            while (! usb_hid.ready() ) {
+                delay(2);
+            }
+
+//            GetEuler(Gyro.dq);
+
+            //send_motion(0, 0, -xyz[0] * 10, 0);
+            send_motion(0, xyz[1] * 10, 0, 0);
+
+//            prev_angles[0] = xyz[0];
+//            prev_angles[1] = xyz[1];
+//            prev_angles[2] = xyz[2];
+//
 //            send_motion(xyz[1] / 4, -xyz[2] / 4, xyz[0] / 4, 0);
 
             return;
 
     };
+
+    while (! usb_hid.ready() ) {
+        delay(2);
+    }
 
 
     read_paw3204_status(DEV1, &stat1);

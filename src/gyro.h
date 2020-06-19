@@ -15,7 +15,7 @@ extern "C"
 #include "Wire.h"
 #include "I2Cdev.h"
 #include "MPU6050.h"
-#include "helper_3dmath.h"
+#include "helper_3dmath_my.h"
 
 
 void ConvertToDegrees(float*ypr, float*xyz);
@@ -24,13 +24,23 @@ void GetEuler(float *data, Quaternion *q);
 class GYRO {
 
 public:
+
+    float drift_angle = 0.02;
+    VectorFloat drift_axis = VectorFloat(-0.55, -0.15, -0.84);
+
     void init();
     bool update_from_mpu();
     void reset_origin();
     void get_angles(float *ypr);
+    void get_delta_angles(float *ypr);
+    void enableSendRawGyro(bool enable) { send_raw_gyro = enable; }
 
 private:
     MPU6050 mpu;
+
+    Quaternion drift_q;
+
+    bool send_raw_gyro = false;
 
     const float GYRO_X_TRIM = -0.45f;
     const float GYRO_Y_TRIM = 1.53f;
@@ -47,12 +57,13 @@ private:
     Quaternion gyro_q_center = Quaternion();
     Quaternion gyro_q = Quaternion();
     Quaternion gyro_q_centered = Quaternion();
+    Quaternion dq = Quaternion();
 
     int32_t state_gyro = GYRO_ST_INITIAL;
 
     uint32_t prev_mpu_millis = 0;
 
-    void gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z);
+    Quaternion gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z);
 
 
 };
