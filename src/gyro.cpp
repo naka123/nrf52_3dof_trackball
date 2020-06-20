@@ -60,17 +60,15 @@ char tmp[128];
 
 void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
-//    const float gx = ((float)raw_x) / scale_gyro;
-//    const float gy = ((float)raw_y) / scale_gyro;
-//    const float gz = ((float)raw_z) / scale_gyro;
+    Quaternion gyro_q_prev = Quaternion(gyro_q);
 
-    const float scale_gyro_all = 1.f / scale_gyro / 180 * PI * dt_gyro;
-
-    const float Wx = (float)raw_x * scale_gyro_all;
-    const float Wy = (float)raw_y * scale_gyro_all;
-    const float Wz = (float)raw_z * scale_gyro_all;
+    const float Wx = (float)raw_x * raw_to_rad_sec;
+    const float Wy = (float)raw_y * raw_to_rad_sec;
+    const float Wz = (float)raw_z * raw_to_rad_sec;
 
     const float Qw = gyro_q.w, Qx = gyro_q.x, Qy = gyro_q.y, Qz = gyro_q.z;
+
+    // из http://www.st.com/content/ccc/resource/technical/document/design_tip/group0/b5/70/bd/25/d2/f4/45/1c/DM00286303/files/DM00286303.pdf/jcr:content/translations/en.DM00286303.pdf
 
     const float Qw1 = -Qx * Wx - Qy * Wy - Qz * Wz;
     const float Qx1 = +Qw * Wx - Qz * Wy + Qy * Wz;
@@ -78,8 +76,6 @@ void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
     const float Qz1 = -Qy * Wx + Qx * Wy + Qw * Wz;
 
     Quaternion Q1 = Quaternion(Qw1/2, Qx1/2, Qy1/2, Qz1/2);
-
-    Quaternion gyro_q_prev = Quaternion(gyro_q);
 
     gyro_q.w += Q1.w;
     gyro_q.x += Q1.x;

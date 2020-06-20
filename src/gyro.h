@@ -48,6 +48,7 @@ private:
 
     const float dt_gyro = 1./100; // 100Hz
     const float scale_gyro = 16.384f; // +32768 int16_t +2000 Deg/sec -> 16.384
+    const float raw_to_rad_sec = 1.f / scale_gyro / 180 * PI * dt_gyro;
 
     enum {
         GYRO_ST_INITIAL = 0,
