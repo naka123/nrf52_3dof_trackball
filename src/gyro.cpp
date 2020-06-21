@@ -46,8 +46,8 @@ void GYRO::init() {
 //    mpu.CalibrateGyro();
 //    SEGGER_RTT_printf(0, "MPU6050 gyro calibration done\n");
 
-    mpu.setRate(9); // 1kHz / (1+9) = 100Hz
-    mpu.setAccelFIFOEnabled(true);
+    mpu.setRate(SAMPLE_RATE); // 1kHz / (1+9) = 100Hz
+//    mpu.setAccelFIFOEnabled(true);
     mpu.setXGyroFIFOEnabled(true);
     mpu.setYGyroFIFOEnabled(true);
     mpu.setZGyroFIFOEnabled(true);
@@ -58,13 +58,16 @@ void GYRO::init() {
 
 char tmp[128];
 
+#define NEW_QUAT
+
 void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
-    Quaternion gyro_q_prev = Quaternion(gyro_q);
+    const float Wx = (float)raw_x * raw_to_rad_sec - GYRO_X_TRIM;
+    const float Wy = (float)raw_y * raw_to_rad_sec - GYRO_Y_TRIM;
+    const float Wz = (float)raw_z * raw_to_rad_sec - GYRO_Z_TRIM;
 
-    const float Wx = (float)raw_x * raw_to_rad_sec;
-    const float Wy = (float)raw_y * raw_to_rad_sec;
-    const float Wz = (float)raw_z * raw_to_rad_sec;
+#ifndef NEW_QUAT
+    Quaternion gyro_q_prev = Quaternion(gyro_q);
 
     const float Qw = gyro_q.w, Qx = gyro_q.x, Qy = gyro_q.y, Qz = gyro_q.z;
 
@@ -84,9 +87,26 @@ void GYRO::gyro_q_update(int16_t raw_x, int16_t raw_y, int16_t raw_z) {
 
     gyro_q.normalize();
 
-//    Quaternion gyro_q_centered = gyro_q * gyro_q_center.getConjugate();
-
     Quaternion dq = gyro_q * gyro_q_prev.getConjugate();
+
+#else
+    // из https://stackoverflow.com/questions/24197182/efficient-quaternion-angular-velocity/24201879#24201879
+
+    auto ha = VectorFloat(Wx, Wy, Wz) / 2;
+    auto l = ha.getMagnitude();
+    float w;
+    if (l > 0) {
+        ha = ha * ( sin(l) / l );
+        w = cos(l);
+    } else {
+        w = 1.;
+    }
+    Quaternion dq = Quaternion(w, ha.x, ha.y, ha.z);
+
+    gyro_q = gyro_q * dq;
+
+#endif
+
     gyro_q_delta_accumulated = gyro_q_delta_accumulated * dq;
 
 }
@@ -97,50 +117,52 @@ bool GYRO::update_from_mpu() {
 //    prev_mpu_millis = millis();
 
     // читаю довольно часто, и фифо может оказаться пустым
-    uint8_t buffer[12];
-    if (! mpu.GetCurrentFIFOPacket(buffer, sizeof(buffer))) {
-        return false;
-    }
+    uint8_t buffer[6];
+    while ( mpu.GetCurrentFIFOPacket(buffer, sizeof(buffer))) {
 
 
-    int16_t accel_x = (((int16_t) buffer[0]) << 8) | buffer[1];
-    int16_t accel_y = (((int16_t) buffer[2]) << 8) | buffer[3];
-    int16_t accel_z = (((int16_t) buffer[4]) << 8) | buffer[5];
-    int16_t gyro_x = (((int16_t) buffer[6]) << 8) | buffer[7];
-    int16_t gyro_y = (((int16_t) buffer[8]) << 8) | buffer[9];
-    int16_t gyro_z = (((int16_t) buffer[10]) << 8) | buffer[11];
+//        int16_t accel_x = (((int16_t) buffer[0]) << 8) | buffer[1];
+//        int16_t accel_y = (((int16_t) buffer[2]) << 8) | buffer[3];
+//        int16_t accel_z = (((int16_t) buffer[4]) << 8) | buffer[5];
+        int16_t gyro_x = (((int16_t) buffer[0]) << 8) | buffer[1];
+        int16_t gyro_y = (((int16_t) buffer[2]) << 8) | buffer[3];
+        int16_t gyro_z = (((int16_t) buffer[4]) << 8) | buffer[5];
 
 //    printf("Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
 //           accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
 
 
-    if (send_raw_gyro) {
+        if (send_raw_gyro) {
 //        sprintf(tmp, "Accel: X:%6d Y:%6d Z:%6d \tGyro: X:%6d Y:%6d Z:%6d\n\0",
 //                accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
 //
 //        SEGGER_RTT_printf(0, tmp);
 
 //        send_3dx_report_raw_gyro(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z);
-    }
+        }
 //            send_motion(gyro_x/10, gyro_y/10, gyro_z/10, 0);
 //            delay(1);
 //            return;
 
 
-    gyro_q_update(gyro_x, gyro_y, gyro_z);
+        gyro_q_update(gyro_x, gyro_y, gyro_z);
+
+        yield();
+
+    }
 
     return true;
 }
 
 
 void GYRO::reset_origin() {
-    gyro_q_center = gyro_q.getConjugate();
+//    gyro_q_center = gyro_q.getConjugate();
 }
 
 void GYRO::get_angles(float *xyz) {
     float ypr[3];
 
-    GetEuler(ypr, &gyro_q_centered);
+    GetEuler(ypr, &gyro_q);
     ConvertToDegrees(ypr, xyz);
 
 //        sprintf(tmp, "Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
@@ -150,23 +172,20 @@ void GYRO::get_angles(float *xyz) {
 
 }
 
-bool GYRO::get_delta_angles(float *xyz) {
+bool GYRO::get_delta_quat(Quaternion *q) {
 
     // identity
     if (gyro_q_delta_accumulated == Quaternion()) {
         return false;
     }
 
-    float ypr[3];
-    GetEuler(ypr, &gyro_q_delta_accumulated);
-    ConvertToDegrees(ypr, xyz);
+    q->w = gyro_q_delta_accumulated.w;
+    q->x = gyro_q_delta_accumulated.x;
+    q->y = gyro_q_delta_accumulated.y;
+    q->z = gyro_q_delta_accumulated.z;
 
     gyro_q_delta_accumulated = Quaternion();
 
-//    printf("Anlges2: %-7.2f / %-7.2f / %-7.2f\n\0",
-//            xyz[0], xyz[1], xyz[2]);
-
-//    SEGGER_RTT_printf(0, tmp);
     return true;
 
 }

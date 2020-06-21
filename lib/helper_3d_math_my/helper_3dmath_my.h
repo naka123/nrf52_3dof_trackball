@@ -233,6 +233,15 @@ class VectorFloat {
             r.rotate(q);
             return r;
         }
+
+        VectorFloat operator /(float v) const {
+            return {x/v, y/v, z/v};
+        }
+
+        VectorFloat operator *(float v) const {
+            return {x*v, y*v, z*v};
+        }
+
 };
 
 #endif /* _HELPER_3DMATH_H_ */

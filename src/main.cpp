@@ -38,21 +38,26 @@ static TaskHandle_t  _bsensHandle;
 
 }
 
+
+#ifdef USE_GYRO
+
 static TaskHandle_t  _gyroHandle;
 
 [[noreturn]] static void gyro_task(void* arg) {
     (void) arg;
 
     Gyro.init();
-    Gyro.enableSendRawGyro(true);
+//    Gyro.enableSendRawGyro(true);
 
     while(true) {
         Gyro.update_from_mpu();
 //        yield();
-        delay(4);
+        delay(5);
     }
 
 }
+
+#endif
 
 
 #define PIN_ENC_BUTTON PIN_D21
@@ -105,7 +110,10 @@ void setup()
 
 
     xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_LOW, &_bsensHandle);
+
+#ifdef USE_GYRO
     xTaskCreate(gyro_task, "gyro", STACK_SZ, NULL, TASK_PRIO_LOW, &_gyroHandle);
+#endif
 
 }
 
@@ -168,6 +176,7 @@ uint32_t do_encoder();
 bool zero_motion_sent = true;
 
 const int USB_WAIT_DELAY_MS = 2;
+const int GYRO_SEND_INTERVAL_MS = 1000/60; // 60Hz
 
 uint32_t t_gyro_send_prev = 0;
 
@@ -185,19 +194,27 @@ void loop()
 
     uint32_t m = millis();
 
-    if ( m - t_gyro_send_prev > 10 ) {
+#ifdef USE_GYRO
+
+    if ( m - t_gyro_send_prev > GYRO_SEND_INTERVAL_MS ) {
 
         t_gyro_send_prev = m;
 
-        float xyz[3];
-        if (Gyro.get_delta_angles(xyz) && translation_mode != MODE_ROT_2DOF) {
+        Quaternion q_accumulated = Quaternion();
+        if (Gyro.get_delta_quat(&q_accumulated) && translation_mode != MODE_ROT_2DOF) {
 //        printf("angles loop: %5.2f\t%5.2f\t%5.2f\n", xyz[0], xyz[1], xyz[2]);
+
+            float xyz[3];
+            float ypr[3];
+            GetEuler(ypr, &q_accumulated);
+            ConvertToDegrees(ypr, xyz);
+
 
             int16_t dx = xyz[1] * 10;
             int16_t dy = -xyz[2] * 10;
             int16_t dz = xyz[0] * 10;
 
-            if (dx != 0 || dy != 0 || dz != 0) {
+            if (abs(dx) > 1 || abs(dy) > 1 || abs(dz) > 1) {
                 send_motion(dx, dy, dz, 0);
 
 //                printf("send_motion: %5d\t%5d\t%5d\n", dx, dy, dz);
@@ -209,6 +226,8 @@ void loop()
 
         }
     }
+
+#endif
 
     read_paw3204_status(DEV1, &stat1);
     read_paw3204_status(DEV2, &stat2);
