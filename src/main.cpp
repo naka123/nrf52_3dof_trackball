@@ -230,17 +230,28 @@ void loop()
 #endif
 
     read_paw3204_status(DEV1, &stat1);
+    if (stat1 & 0x80) {
+        read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
+    } else {
+        m1x = 0;
+        m1y = 0;
+        // qua1 остаётся с прошлого раза
+    }
+
+
     read_paw3204_status(DEV2, &stat2);
+    if (stat2 & 0x80) {
+        read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
+    } else {
+        m2x = 0;
+        m2y = 0;
+        // qua2 остаётся с прошлого раза
+    }
 
     // если никаких изменений нет - можно ничего не посылать
     if (stat1 & 0x80 || stat2 & 0x80) {
 
         zero_motion_sent = false;
-
-        yield();
-        read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
-        yield();
-        read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
 
         // второй сенсор повёрнут относительно первого на 180 градусов
         m2x = -m2x;
@@ -252,9 +263,9 @@ void loop()
 
         send_motion(cx, cy, cz, enc_delta);
 
-    } else if (!zero_motion_sent) {
-        send_motion(0, 0, 0, 0);
-        zero_motion_sent = true;
+//    } else if (!zero_motion_sent) {
+//        send_motion(0, 0, 0, 0);
+//        zero_motion_sent = true;
     } else {
         delay(1);
     }
