@@ -238,10 +238,29 @@ uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, 
 void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize);
 
 
+
+inline float clamp(const float v, const float v_min, const float v_max) {
+    if (v < v_min) {
+        return v_min;
+    } else if (v > v_max) {
+        return v_max;
+    }
+    return v;
+}
+
+inline float cubic_curve(const float x, const float a, const float range=1.) {
+    if (a == 0) {
+        return x;
+    }
+    const float xf = x / range;
+    return clamp(a * (xf*xf*xf) + (1 - a) * xf, -1., 1.) * range;
+}
+
 extern uint8_t translation_mode;
 
 extern float SENSOR_R_SCALE;
 extern float SENSOR_T_SCALE;
+extern float CUBIC_COEF;
 
 #ifdef __cplusplus
 }

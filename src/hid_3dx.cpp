@@ -5,6 +5,7 @@ uint8_t translation_mode = MODE_ROT_3DOF;
 
 float SENSOR_R_SCALE = 1.5f;
 float SENSOR_T_SCALE = 1.5f;
+float CUBIC_COEF = 0.33;
 
 void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
 
@@ -43,16 +44,16 @@ void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *r
 
 
 void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report) {
-    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE);
-    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE);
-    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE);
+    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE / 2);
+    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE / 2);
+    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE / 2);
 
     report->x       = 0;
     report->y       = d_enc;
     report->z       = 0;
-    report->rx     = rx;
-    report->ry     = ry;
-    report->rz     = rz;
+    report->rx     = cubic_curve(rx, CUBIC_COEF, 64);
+    report->ry     = cubic_curve(ry, CUBIC_COEF, 64);
+    report->rz     = cubic_curve(rz, CUBIC_COEF, 64);
 }
 
 
