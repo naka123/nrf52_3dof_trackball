@@ -254,8 +254,8 @@ void loop()
         zero_motion_sent = false;
 
         // второй сенсор повёрнут относительно первого на 180 градусов
-        m2x = -m2x;
-        m2y = -m2y;
+        m1x = -m1x;
+        m1y = -m1y;
 
         const int16_t cx = m1x + m2x;
         const int16_t cy = (m1y + m2y) / 2;
