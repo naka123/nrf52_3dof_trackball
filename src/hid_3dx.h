@@ -12,17 +12,16 @@
 #include <Arduino.h>
 #include <Adafruit_USBD_HID.h>
 
+#include "bipbuf.hpp"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif // __cplusplus
 
 static const int JOYSTICK_REPORT_SIZE = 2 * 8 + 4 + 4 * 2;
-static const int JOYSTICK_FEED_BUFFER_SIZE = 8;
 
-extern uint8_t joystick_buffer[JOYSTICK_FEED_BUFFER_SIZE][JOYSTICK_REPORT_SIZE];
-extern uint8_t joystick_buffer_head;
-extern uint8_t joystick_buffer_tail;
+extern bipbuf_t BipBuf;
 
 enum {
     REPORT_ID_6DOF = 1,
@@ -35,7 +34,7 @@ enum {
     REPORT_ID_MODE = 0x80,
     REPORT_ID_R_SCALE = 0x81,
     REPORT_ID_T_SCALE = 0x82,
-    REPORT_ID_JOYSTICK_FEED = 0x88,
+    REPORT_ID_MIRROR_FEED = 0x88,
 };
 
 enum {
@@ -242,10 +241,10 @@ enum {
           HID_REPORT_COUNT( 1 ),\
           HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
           \
-          HID_REPORT_ID       ( REPORT_ID_JOYSTICK_FEED ), \
+          HID_REPORT_ID       ( REPORT_ID_MIRROR_FEED ), \
           HID_USAGE      ( 0x4  )        ,\
           HID_REPORT_SIZE ( 8 ),\
-          HID_REPORT_COUNT( JOYSTICK_REPORT_SIZE ),\
+          HID_REPORT_COUNT( 63 ),\
           HID_FEATURE      ( HID_DATA | HID_ARRAY | HID_ABSOLUTE  ),\
       HID_COLLECTION_END,\
       \

@@ -8,9 +8,8 @@ float SENSOR_T_SCALE = 1.5f;
 float CUBIC_COEF = 0.33;
 
 
-uint8_t joystick_buffer[JOYSTICK_FEED_BUFFER_SIZE][JOYSTICK_REPORT_SIZE];
-uint8_t joystick_buffer_head = 0;
-uint8_t joystick_buffer_tail = 0;
+bipbuf_t BipBuf;
+
 
 
 #define USB_WAIT_DELAY_MS 1
@@ -233,17 +232,27 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
                 break;
             }
 
-            case REPORT_ID_JOYSTICK_FEED: {
-                if (bufsize != JOYSTICK_REPORT_SIZE+1) {
-                    printf("REPORT_ID_JOYSTICK_FEED: bad buffsize: %d (should be %d)\n", bufsize, JOYSTICK_REPORT_SIZE);
-                    return;
-                }
-                memcpy(joystick_buffer[joystick_buffer_head], buffer+1, JOYSTICK_REPORT_SIZE);
-                joystick_buffer_head = (joystick_buffer_head + 1) % JOYSTICK_FEED_BUFFER_SIZE;
-                if (joystick_buffer_head == joystick_buffer_tail) {
-                    // overflow
-                    joystick_buffer_tail = (joystick_buffer_tail + 1) % JOYSTICK_FEED_BUFFER_SIZE;
-                }
+            case REPORT_ID_MIRROR_FEED: {
+//                if (bufsize != JOYSTICK_REPORT_SIZE+2) {
+//                    printf("REPORT_ID_JOYSTICK_FEED: bad buffsize: %d (should be %d)\n", bufsize, JOYSTICK_REPORT_SIZE);
+//                    return;
+//                }
+
+//                memcpy(joystick_buffer[joystick_buffer_head], buffer+1, JOYSTICK_REPORT_SIZE);
+//                joystick_buffer_head = (joystick_buffer_head + 1) % JOYSTICK_FEED_BUFFER_SIZE;
+//                if (joystick_buffer_head == joystick_buffer_tail) {
+//                     overflow
+//                    joystick_buffer_tail = (joystick_buffer_tail + 1) % JOYSTICK_FEED_BUFFER_SIZE;
+//                }
+
+                const uint8_t hdr[2] = {
+                        buffer[1], // report_id
+                        buffer[2]  // report size
+                };
+
+                bipbuf_offer(&BipBuf, hdr, 2);
+                bipbuf_offer(&BipBuf, buffer+3, hdr[1]);
+//                printf("REPORT_ID_JOYSTICK_FEED: feed to bip: report_id:0x%02x %d bytes (used: %d bytes)\n", hdr[0], hdr[1], bipbuf_used(&BipBuf));
                 break;
             }
 
