@@ -7,6 +7,8 @@
 #ifndef NRF52_TEST_HID_3DX_H
 #define NRF52_TEST_HID_3DX_H
 
+#include <RingBuffer.h>
+
 #include <Arduino.h>
 #include <Adafruit_USBD_HID.h>
 
@@ -15,20 +17,31 @@ extern "C"
 {
 #endif // __cplusplus
 
+static const int JOYSTICK_REPORT_SIZE = 2 * 8 + 4 + 4 * 2;
+static const int JOYSTICK_FEED_BUFFER_SIZE = 8;
+
+extern uint8_t joystick_buffer[JOYSTICK_FEED_BUFFER_SIZE][JOYSTICK_REPORT_SIZE];
+extern uint8_t joystick_buffer_head;
+extern uint8_t joystick_buffer_tail;
+
 enum {
-     REPORT_ID_6DOF = 1,
-     REPORT_ID_BUTTONS = 3,
-     REPORT_ID_MODE = 0x80,
-     REPORT_ID_R_SCALE = 0x81,
-     REPORT_ID_T_SCALE = 0x82,
+    REPORT_ID_6DOF = 1,
+    REPORT_ID_BUTTONS = 3,
+
+    REPORT_ID_MOUSE = 0x84,
+    REPORT_ID_JOYSTICK = 0x85,
     REPORT_ID_RAW_GYRO = 0x87,
-    REPORT_ID_MOUSE = 0x84
+
+    REPORT_ID_MODE = 0x80,
+    REPORT_ID_R_SCALE = 0x81,
+    REPORT_ID_T_SCALE = 0x82,
+    REPORT_ID_JOYSTICK_FEED = 0x88,
 };
 
 enum {
     MODE_ROT_3DOF = 0,
     MODE_TRANS2_ROT1 = 1,
-    MODE_ROT_2DOF = 2,
+    MODE_MOUSE_1RDOF = 2,
 };
 
 enum {
@@ -92,6 +105,64 @@ enum {
         HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_RELATIVE ), \
     HID_COLLECTION_END                                            , \
   HID_COLLECTION_END, \
+  \
+  HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )        ,\
+  HID_USAGE      ( HID_USAGE_DESKTOP_JOYSTICK  )        ,\
+  HID_COLLECTION ( HID_COLLECTION_APPLICATION )        ,\
+    /* Report ID if any */\
+    HID_REPORT_ID       ( REPORT_ID_JOYSTICK ), \
+    /* X, Y, Z, Rz (min -127, max 127 ) */ \
+    HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_X                    ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_Y                    ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_Z                    ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_RX                   ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_RY                   ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_RZ                   ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_SLIDER               ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_DIAL                 ) ,\
+    HID_REPORT_SIZE  ( 16                                     ) ,\
+    HID_REPORT_COUNT ( 8                                      ) ,\
+    HID_PHYSICAL_MIN ( 0), \
+    HID_PHYSICAL_MAX_N ( 0xFFFF, 2 ), \
+    HID_LOGICAL_MIN ( 0), \
+    HID_LOGICAL_MAX_N ( 0xFFFF, 2 ), \
+    HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+    /* 32 bit Button Map */ \
+    HID_USAGE_PAGE   ( HID_USAGE_PAGE_BUTTON                  ) ,\
+    HID_USAGE_MIN    ( 1                                      ) ,\
+    HID_USAGE_MAX    ( 32                                     ) ,\
+    HID_LOGICAL_MIN  ( 0                                      ) ,\
+    HID_LOGICAL_MAX  ( 1                                      ) ,\
+    HID_REPORT_SIZE  ( 1                                      ) ,\
+    HID_REPORT_COUNT ( 32                                     ) ,\
+    HID_INPUT        ( HID_DATA | HID_ARRAY | HID_ABSOLUTE    ) ,\
+    /* 4 hats */ \
+    HID_COLLECTION ( HID_COLLECTION_PHYSICAL ), \
+        HID_LOGICAL_MIN  ( 0                                      ) ,\
+        HID_PHYSICAL_MIN ( 0 ), \
+        HID_UNIT ( 0x14 ), /* Eng Rot: Degree) */ \
+        /* 0x55, 0x0f,  # UNIT_EXPONENT (-1) */ \
+        HID_UNIT_EXPONENT ( 0x0f ), \
+        HID_PHYSICAL_MAX_N ( 3599, 2 ), \
+        HID_LOGICAL_MAX_N ( 3599, 2 ), \
+        HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+        HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+        HID_REPORT_SIZE  ( 16                                     ) ,\
+        HID_REPORT_COUNT ( 1                                     ) ,\
+        HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE | HID_NULL_STATE    ) ,\
+        HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+        HID_REPORT_COUNT ( 1                                     ) ,\
+        HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE | HID_NULL_STATE    ) ,\
+        HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+        HID_REPORT_COUNT ( 1                                     ) ,\
+        HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE | HID_NULL_STATE    ) ,\
+        HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+        HID_REPORT_COUNT ( 1                                     ) ,\
+        HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE | HID_NULL_STATE    ) ,\
+    HID_COLLECTION_END, \
+  HID_COLLECTION_END, \
+  \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )        ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER  )        ,\
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )        ,\
@@ -110,8 +181,11 @@ enum {
           HID_USAGE       (  HID_USAGE_DESKTOP_RX ),\
           HID_USAGE       (  HID_USAGE_DESKTOP_RY ),\
           HID_USAGE       (  HID_USAGE_DESKTOP_RZ ),\
+          HID_USAGE       (  HID_USAGE_DESKTOP_VBRX ),\
+          HID_USAGE       (  HID_USAGE_DESKTOP_VBRY ),\
+          HID_USAGE       (  HID_USAGE_DESKTOP_VBRZ ),\
           HID_REPORT_SIZE ( 16 ),\
-          HID_REPORT_COUNT( 3 ),\
+          HID_REPORT_COUNT( 6 ),\
           HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_RELATIVE ),\
       HID_COLLECTION_END, \
       /* Buttons */ \
@@ -167,6 +241,12 @@ enum {
           HID_USAGE      ( 0x3  )        ,\
           HID_REPORT_COUNT( 1 ),\
           HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+          \
+          HID_REPORT_ID       ( REPORT_ID_JOYSTICK_FEED ), \
+          HID_USAGE      ( 0x4  )        ,\
+          HID_REPORT_SIZE ( 8 ),\
+          HID_REPORT_COUNT( JOYSTICK_REPORT_SIZE ),\
+          HID_FEATURE      ( HID_DATA | HID_ARRAY | HID_ABSOLUTE  ),\
       HID_COLLECTION_END,\
       \
   HID_COLLECTION_END
@@ -193,7 +273,9 @@ typedef struct TU_ATTR_PACKED
     int16_t  rx;
     int16_t  ry;
     int16_t  rz;
-
+    int16_t  vrx;
+    int16_t  vry;
+    int16_t  vrz;
 } hid_3dx_report_6dof_t;
 
 typedef struct TU_ATTR_PACKED
@@ -224,6 +306,7 @@ typedef struct TU_ATTR_PACKED
 
 
 void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc);
+void map_as_3Tdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
 void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);

@@ -182,15 +182,26 @@ uint32_t t_gyro_send_prev = 0;
 
 void loop()
 {
+
+    if (joystick_buffer_head != joystick_buffer_tail) {
+
+        while (! usb_hid.ready() ) {
+            delay(USB_WAIT_DELAY_MS);
+        }
+
+        tud_hid_report(REPORT_ID_JOYSTICK, joystick_buffer[joystick_buffer_tail], JOYSTICK_REPORT_SIZE);
+        joystick_buffer_tail = (joystick_buffer_tail + 1) % JOYSTICK_FEED_BUFFER_SIZE;
+    }
+
+    while (! usb_hid.ready() ) {
+        delay(USB_WAIT_DELAY_MS);
+    }
+
 //    SEGGER_RTT_printf(0, "loop tick\n");
 
     uint32_t enc_delta = do_encoder();
 //    ledOn(LED_BLUE);
 //    ledOff(LED_BLUE);
-
-    while (! usb_hid.ready() ) {
-        delay(USB_WAIT_DELAY_MS);
-    }
 
     uint32_t m = millis();
 

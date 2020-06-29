@@ -7,25 +7,62 @@ float SENSOR_R_SCALE = 1.5f;
 float SENSOR_T_SCALE = 1.5f;
 float CUBIC_COEF = 0.33;
 
+
+uint8_t joystick_buffer[JOYSTICK_FEED_BUFFER_SIZE][JOYSTICK_REPORT_SIZE];
+uint8_t joystick_buffer_head = 0;
+uint8_t joystick_buffer_tail = 0;
+
+
+#define USB_WAIT_DELAY_MS 1
+
 void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
 
     hid_3dx_report_6dof_t report;
 
     if(translation_mode == MODE_TRANS2_ROT1 ) {
-        map_as_2T1Rdof(dx, dy, d_enc, &report);
-        send_3dx_report_6dof(&report);
+//        map_as_2T1Rdof(dx, dy, 0, &report);
+//        send_3dx_report_6dof(&report);
+        send_3dx_report_raw_gyro(dx, dy, dz, 0, 0, 0);
     } else if(translation_mode == MODE_ROT_3DOF ) {
         map_as_3Rdof_and_zoom(dx, dy, dz, 0, &report);
         send_3dx_report_6dof(&report);
-    }  else if(translation_mode == MODE_ROT_2DOF ) {
+    }  else if(translation_mode == MODE_MOUSE_1RDOF ) {
 //        map_as_2Rdof(dx, dy, dz, 0, &report);
-        tud_hid_mouse_report(REPORT_ID_MOUSE, 0, dx/2, dy/2, 0, 0);
+
+//        const int16_t dyz = abs(dy) > abs(dz) ? dy : dz;
+        const float x = cubic_curve(-dz, 0.25, 64);
+        const float y = cubic_curve(dy, 0.25, 64);
+
+        tud_hid_mouse_report(REPORT_ID_MOUSE, 0, x / 2, y / 2, 0, 0);
+
+
+        while (!tud_hid_ready()) {
+            delay(USB_WAIT_DELAY_MS);
+        }
+
+        send_3dx_report_raw_gyro(dx, 0, 0, 0, 0, 0);
     } else {
         return;
     }
 
 
 }
+
+void map_as_3Tdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report) {
+    const auto x = (int16_t)((float)(dx) * SENSOR_T_SCALE);
+    const auto y = (int16_t)((float)(dz) * SENSOR_T_SCALE);
+    const auto z = (int16_t)((float)(dy) * SENSOR_T_SCALE);
+
+//    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE);
+
+    report->x       = x; // влево/вправо
+    report->y       = y; // на себя/от себя
+    report->z       = z; // вверх/вниз
+    report->rx       = 0;
+    report->ry       = 0;
+    report->rz       = 0;
+}
+
 
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report) {
     const auto x = (int16_t)((float)(dx) * SENSOR_T_SCALE);
@@ -155,7 +192,7 @@ union f{
 void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
 
-    printf("set_report_callback report _id: %02x, _type: %02x, _sz: %d\n", report_id, (uint8_t)report_type, bufsize);
+//    printf("set_report_callback report _id: %02x, _type: %02x, _sz: %d\n", report_id, (uint8_t)report_type, bufsize);
 
     if ( report_type == HID_REPORT_TYPE_FEATURE ) {
         switch(report_id) {
@@ -193,6 +230,20 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
                 };
                 auto *r2 = (hid_3dx_raw_feature_scale_t *) (buffer);
                 SENSOR_T_SCALE = (float) r2->scale / 100.f;
+                break;
+            }
+
+            case REPORT_ID_JOYSTICK_FEED: {
+                if (bufsize != JOYSTICK_REPORT_SIZE+1) {
+                    printf("REPORT_ID_JOYSTICK_FEED: bad buffsize: %d (should be %d)\n", bufsize, JOYSTICK_REPORT_SIZE);
+                    return;
+                }
+                memcpy(joystick_buffer[joystick_buffer_head], buffer+1, JOYSTICK_REPORT_SIZE);
+                joystick_buffer_head = (joystick_buffer_head + 1) % JOYSTICK_FEED_BUFFER_SIZE;
+                if (joystick_buffer_head == joystick_buffer_tail) {
+                    // overflow
+                    joystick_buffer_tail = (joystick_buffer_tail + 1) % JOYSTICK_FEED_BUFFER_SIZE;
+                }
                 break;
             }
 
