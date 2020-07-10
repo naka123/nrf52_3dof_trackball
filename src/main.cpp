@@ -6,7 +6,7 @@
 #include <SEGGER_RTT.h>
 #include "RotaryEncoder.h"
 
-#include "paw3204.h"
+#include "mouse_sensor"
 #include "hid_3dx.h"
 #include "gyro.h"
 
