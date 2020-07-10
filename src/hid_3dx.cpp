@@ -14,18 +14,18 @@ bipbuf_t BipBuf;
 
 #define USB_WAIT_DELAY_MS 1
 
-void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
+void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc) {
 
     hid_3dx_report_6dof_t report;
 
     if(translation_mode == MODE_TRANS2_ROT1 ) {
 //        map_as_2T1Rdof(dx, dy, 0, &report);
 //        send_3dx_report_6dof(&report);
-        send_3dx_report_raw_gyro(dx, dy, dz, 0, 0, 0);
+//        send_3dx_report_raw_gyro(dx, dy, dz, 0, 0, 0);
     } else if(translation_mode == MODE_ROT_3DOF ) {
         map_as_3Rdof_and_zoom(dx, dy, dz, 0, &report);
         send_3dx_report_6dof(&report);
-    }  else if(translation_mode == MODE_MOUSE_1RDOF ) {
+    } else if(translation_mode == MODE_MOUSE_1RDOF ) {
 //        map_as_2Rdof(dx, dy, dz, 0, &report);
 
 //        const int16_t dyz = abs(dy) > abs(dz) ? dy : dz;
@@ -40,7 +40,9 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
             delay(USB_WAIT_DELAY_MS);
         }
 
-        send_3dx_report_raw_gyro(dx, 0, 0, 0, 0, 0);
+    } else if( translation_mode == MODE_RAW ) {
+//        send_3dx_report_raw_gyro(dx, 0, 0, 0, 0, 0);
+        send_3dx_report_raw_sensor(dx, dy, dz, d_enc, enc);
     } else {
         return;
     }
@@ -119,6 +121,19 @@ bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, in
     };
     return tud_hid_report(REPORT_ID_RAW_GYRO, &report, sizeof(report));
 };
+
+
+bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc) {
+    hid_3dx_report_raw_sensor_t report = {
+            .dx = dx,
+            .dy = dy,
+            .dz = dz,
+            .d_enc = d_enc,
+            .enc = enc,
+    };
+    return tud_hid_report(REPORT_ID_RAW_SENSOR, &report, sizeof(report));
+};
+
 
 typedef struct TU_ATTR_PACKED
 {

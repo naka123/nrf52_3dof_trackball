@@ -30,6 +30,7 @@ enum {
     REPORT_ID_MOUSE = 0x84,
     REPORT_ID_JOYSTICK = 0x85,
     REPORT_ID_RAW_GYRO = 0x87,
+    REPORT_ID_RAW_SENSOR = 0x89,
 
     REPORT_ID_MODE = 0x80,
     REPORT_ID_R_SCALE = 0x81,
@@ -41,6 +42,7 @@ enum {
     MODE_ROT_3DOF = 0,
     MODE_TRANS2_ROT1 = 1,
     MODE_MOUSE_1RDOF = 2,
+    MODE_RAW = 3,
 };
 
 enum {
@@ -62,7 +64,7 @@ enum {
 
 };
 
-#define TUD_HID_REPORT_DESC_MULTIAXIS_CONTROLLER() \
+#define TUD_HID_REPORT_DESC_KUSTOM() \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP      )                   ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_MOUSE     )                   ,\
   HID_COLLECTION ( HID_COLLECTION_APPLICATION  )                   ,\
@@ -202,52 +204,71 @@ enum {
           HID_REPORT_COUNT( 32 ),\
           HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ),\
       HID_COLLECTION_END, \
+  HID_COLLECTION_END, \
       \
       /* Vendor */ \
-      HID_COLLECTION ( 0x80 )  /* vendor */       ,\
-          HID_USAGE_PAGE_N ( HID_USAGE_PAGE_VENDOR, 2     )        ,\
-          \
-          HID_REPORT_ID       ( REPORT_ID_RAW_GYRO ), \
-          HID_USAGE      ( 0x1  )        ,\
-          HID_LOGICAL_MIN ( 0x00 ),\
-          HID_LOGICAL_MAX ( 0xff ),\
-          HID_REPORT_SIZE ( 16 ),\
-          HID_REPORT_COUNT( 6 ),\
-          HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
-          \
-          HID_REPORT_ID       ( REPORT_ID_MODE ), \
-          HID_USAGE      ( 0x1  )        ,\
-          HID_LOGICAL_MIN ( 0x00 ),\
-          HID_LOGICAL_MAX ( 0xff ),\
-          HID_REPORT_SIZE ( 8 ),\
-          HID_REPORT_COUNT( 1 ),\
-          HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
-          \
-          HID_REPORT_ID       ( REPORT_ID_R_SCALE ), \
-          HID_USAGE      ( 0x2  )        ,\
-          HID_LOGICAL_MIN ( 0 ),\
-          HID_LOGICAL_MAX ( 20 ),\
-          HID_PHYSICAL_MIN ( 0 ),\
-          HID_PHYSICAL_MAX_N ( 2000, 2 ),\
-          HID_UNIT ( 0), /* none */ \
-          /* 0x55, 0x0e,  # UNIT_EXPONENT (-2) */ \
-          HID_UNIT_EXPONENT ( 0x0e ), \
-          HID_REPORT_SIZE ( 16 ),\
-          HID_REPORT_COUNT( 1 ),\
-          HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
-           \
-          HID_REPORT_ID       ( REPORT_ID_T_SCALE ), \
-          HID_USAGE      ( 0x3  )        ,\
-          HID_REPORT_COUNT( 1 ),\
-          HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
-          \
-          HID_REPORT_ID       ( REPORT_ID_MIRROR_FEED ), \
-          HID_USAGE      ( 0x4  )        ,\
-          HID_REPORT_SIZE ( 8 ),\
-          HID_REPORT_COUNT( 63 ),\
-          HID_FEATURE      ( HID_DATA | HID_ARRAY | HID_ABSOLUTE  ),\
-      HID_COLLECTION_END,\
+   /*
+    * A Usage is interpreted as a 32 bit unsigned value where the high order 16 bits
+    * defines the Usage Page and the low order 16 bits defines a Usage ID. Usage IDs
+    * are used to select individual Usage on a Usage Page.
+    * */ \
+  HID_USAGE_PAGE_N ( 0xFF00, 2     )        ,\
+  HID_USAGE      ( 0x01  )        ,\
+  HID_COLLECTION ( HID_COLLECTION_APPLICATION )        ,\
+      HID_USAGE_PAGE_N ( 0xFF01, 2     )        ,\
       \
+      HID_REPORT_ID       ( REPORT_ID_RAW_GYRO ), \
+      HID_USAGE      ( 0x1  )        ,\
+      HID_LOGICAL_MIN ( 0x00 ),\
+      HID_LOGICAL_MAX ( 0xff ),\
+      HID_REPORT_SIZE ( 16 ),\
+      HID_REPORT_COUNT( 6 ),\
+      HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      \
+      HID_REPORT_ID       ( REPORT_ID_RAW_SENSOR ), \
+      HID_USAGE      ( 0x1  )        ,\
+      HID_LOGICAL_MIN_N ( -32768, 2 ),\
+      HID_LOGICAL_MAX_N ( 32768, 2 ),\
+      HID_REPORT_SIZE ( 16 ),\
+      HID_REPORT_COUNT( 4 ),\
+      HID_LOGICAL_MIN_N ( -1000000, 3 ),\
+      HID_LOGICAL_MAX_N ( 1000000, 3 ),\
+      HID_REPORT_SIZE ( 32 ),\
+      HID_REPORT_COUNT( 1 ),\
+      HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      \
+      HID_REPORT_ID       ( REPORT_ID_MODE ), \
+      HID_USAGE      ( 0x1  )        ,\
+      HID_LOGICAL_MIN ( 0x00 ),\
+      HID_LOGICAL_MAX ( 0xff ),\
+      HID_REPORT_SIZE ( 8 ),\
+      HID_REPORT_COUNT( 1 ),\
+      HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      \
+      HID_REPORT_ID       ( REPORT_ID_R_SCALE ), \
+      HID_USAGE      ( 0x2  )        ,\
+      HID_LOGICAL_MIN ( 0 ),\
+      HID_LOGICAL_MAX ( 20 ),\
+      HID_PHYSICAL_MIN ( 0 ),\
+      HID_PHYSICAL_MAX_N ( 2000, 2 ),\
+      HID_UNIT ( 0), /* none */ \
+      /* 0x55, 0x0e,  # UNIT_EXPONENT (-2) */ \
+      HID_UNIT_EXPONENT ( 0x0e ), \
+      HID_REPORT_SIZE ( 16 ),\
+      HID_REPORT_COUNT( 1 ),\
+      HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+       \
+      HID_REPORT_ID       ( REPORT_ID_T_SCALE ), \
+      HID_USAGE      ( 0x3  )        ,\
+      HID_REPORT_COUNT( 1 ),\
+      HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      \
+      HID_REPORT_ID       ( REPORT_ID_MIRROR_FEED ), \
+      HID_USAGE      ( 0x4  )        ,\
+      HID_REPORT_SIZE ( 8 ),\
+      HID_REPORT_COUNT( 63 ),\
+      HID_FEATURE      ( HID_DATA | HID_ARRAY | HID_ABSOLUTE  ),\
+  \
   HID_COLLECTION_END
 
 /*
@@ -303,8 +324,16 @@ typedef struct TU_ATTR_PACKED
 
 } hid_3dx_report_raw_gyro_t;
 
+typedef struct TU_ATTR_PACKED
+{
+    int16_t  dx;
+    int16_t  dy;
+    int16_t  dz;
+    int16_t  d_enc;
+    int32_t  enc;
+} hid_3dx_report_raw_sensor_t;
 
-void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc);
+void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc);
 void map_as_3Tdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
@@ -315,6 +344,7 @@ bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);
 bool send_3dx_report_buttons(uint32_t buttons);
 bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons);
 bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, int16_t gy, int16_t gz);
+bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc);
 
 
 uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen);

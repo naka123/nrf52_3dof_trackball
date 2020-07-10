@@ -16,7 +16,7 @@
 // Generic In Out with 64 bytes report (max)
 uint8_t const desc_hid_report[] =
         {
-                TUD_HID_REPORT_DESC_MULTIAXIS_CONTROLLER( )
+                TUD_HID_REPORT_DESC_KUSTOM( )
         };
 
 //Encoder myEnc(PIN_D19, PIN_D20);
@@ -128,7 +128,7 @@ paw3204_all_reg dat;
 int8_t m1x, m1y, m2x, m2y;
 uint8_t stat1, stat2, qua1, qua2;
 
-int encoder_value = 0;
+int32_t encoder_value = 0;
 long oldPosition  = -999;
 
 //enum {
@@ -218,7 +218,7 @@ void loop()
 
 //    SEGGER_RTT_printf(0, "loop tick\n");
 
-    uint32_t enc_delta = do_encoder();
+    uint32_t encoder_delta = do_encoder();
 //    ledOn(LED_BLUE);
 //    ledOff(LED_BLUE);
 
@@ -279,7 +279,7 @@ void loop()
     }
 
     // если никаких изменений нет - можно ничего не посылать
-    if (stat1 & 0x80 || stat2 & 0x80) {
+    if (stat1 & 0x80 || stat2 & 0x80 || encoder_delta != 0) {
 
         zero_motion_sent = false;
 
@@ -291,7 +291,7 @@ void loop()
         const int16_t cy = (m1y + m2y) / 2;
         const int16_t cz = (m1x - m2x);
 
-        send_motion(cx, cy, cz, enc_delta);
+        send_motion(cx, cy, cz, encoder_delta, encoder_value);
 
 //    } else if (!zero_motion_sent) {
 //        send_motion(0, 0, 0, 0);
@@ -325,10 +325,10 @@ uint32_t do_encoder() {
                     ledOn(LED_BLUE);
                     break;
                 case MODE_TRANS2_ROT1:
-                    translation_mode = MODE_ROT_2DOF;
+                    translation_mode = MODE_RAW;
                     ledOn(LED_RED);
                     break;
-                case MODE_ROT_2DOF:
+                case MODE_RAW:
                     translation_mode = MODE_ROT_3DOF;
                     ledOn(LED_GREEN);
                     break;
