@@ -32,7 +32,8 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc) {
         const float x = cubic_curve(-dz, 0.25, 64);
         const float y = cubic_curve(dy, 0.25, 64);
 
-        tud_hid_mouse_report(REPORT_ID_MOUSE, 0, x / 2, y / 2, 0, 0);
+        //tud_hid_mouse_report(REPORT_ID_MOUSE, 0, x / 2, y / 2, 0, 0);
+        send_3dx_report_mouse(0, x / 2, y / 2, 0, 0);
 
 
         while (!tud_hid_ready()) {
@@ -118,6 +119,28 @@ bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, in
     };
     return tud_hid_report(REPORT_ID_RAW_GYRO, &report, sizeof(report));
 };
+
+typedef struct TU_ATTR_PACKED
+{
+    uint8_t buttons; /**< buttons mask for currently pressed buttons in the mouse. */
+    int16_t  x;       /**< Current delta x movement of the mouse. */
+    int16_t  y;       /**< Current delta y movement on the mouse. */
+    int16_t  wheel;   /**< Current delta wheel movement on the mouse. */
+    int8_t  pan;     // using AC Pan
+} hid_mouse16_report_t;
+
+
+bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons) {
+    hid_mouse16_report_t report = {
+            .buttons = buttons,
+            .x = dx,
+            .y = dy,
+            .wheel = d_wheel,
+            .pan = d_hwheel,
+    };
+    return tud_hid_report(REPORT_ID_MOUSE, &report, sizeof(report));
+};
+
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report) {
     return tud_hid_report(REPORT_ID_6DOF, report, sizeof(*report));

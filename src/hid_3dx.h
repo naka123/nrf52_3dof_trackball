@@ -89,10 +89,10 @@ enum {
         HID_USAGE       ( HID_USAGE_DESKTOP_Y                    ) ,\
         /* Verital wheel scroll [-127, 127] */ \
         HID_USAGE       ( HID_USAGE_DESKTOP_WHEEL                )  ,\
-        HID_LOGICAL_MIN ( 0x81                                   ) ,\
-        HID_LOGICAL_MAX ( 0x7f                                   ) ,\
+        HID_LOGICAL_MIN_N ( -32768,  2 ),\
+        HID_LOGICAL_MAX_N (  32768,   2 ),\
         HID_REPORT_COUNT( 3                                      ) ,\
-        HID_REPORT_SIZE ( 8                                      ) ,\
+        HID_REPORT_SIZE ( 16                                      ) ,\
         HID_INPUT       ( HID_DATA | HID_VARIABLE | HID_RELATIVE ) ,\
       HID_USAGE_PAGE  ( HID_USAGE_PAGE_CONSUMER ), \
        /* Horizontal wheel scroll [-127, 127] */ \
@@ -313,6 +313,7 @@ void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_rep
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);
 bool send_3dx_report_buttons(uint32_t buttons);
+bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons);
 bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, int16_t gy, int16_t gz);
 
 
