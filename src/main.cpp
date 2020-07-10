@@ -287,8 +287,9 @@ void loop()
         m1x = -m1x;
         m1y = -m1y;
 
+        // движение по окружности диаметром 88мм, противы суммы 2х движений по окружности 62
+        const int16_t cy = (float)(m1y + m2y) / 2 * 1.41;
         const int16_t cx = m1x + m2x;
-        const int16_t cy = (m1y + m2y) / 2;
         const int16_t cz = (m1x - m2x);
 
         send_motion(cx, cy, cz, encoder_delta, encoder_value);
