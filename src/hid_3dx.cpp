@@ -3,7 +3,7 @@
 
 uint8_t translation_mode = MODE_ROT_3DOF;
 
-float SENSOR_R_SCALE = 1.5f;
+float SENSOR_R_SCALE = 4.5f;
 float SENSOR_T_SCALE = 1.5f;
 float CUBIC_COEF = 0.33;
 

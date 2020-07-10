@@ -36,6 +36,8 @@ static TaskHandle_t  _bsensHandle;
         delay(1);
     }
 
+//    hwReadConfigBlock
+
 }
 
 
@@ -74,7 +76,7 @@ void setup()
 //board_config.update("build.usb_product", "SpaceMouse PRO")
 
     usb_hid.enableOutEndpoint(true);
-    usb_hid.setPollInterval(4);
+    usb_hid.setPollInterval(1);
     usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
     usb_hid.setReportCallback(get_report_callback, set_report_callback);
 
@@ -231,7 +233,7 @@ void loop()
         t_gyro_send_prev = m;
 
         Quaternion q_accumulated = Quaternion();
-        if (Gyro.get_delta_quat(&q_accumulated) && translation_mode != MODE_ROT_2DOF) {
+        if (Gyro.get_delta_quat(&q_accumulated) && translation_mode != MODE_MOUSE_1RDOF) {
 //        printf("angles loop: %5.2f\t%5.2f\t%5.2f\n", xyz[0], xyz[1], xyz[2]);
 
             float xyz[3];
@@ -308,7 +310,7 @@ uint32_t do_encoder() {
     uint8_t cur_btn = digitalRead(PIN_ENC_BUTTON);
     if (cur_btn != prev_btn) {
         prev_btn = cur_btn;
-        SEGGER_RTT_printf(0, "enc button %s\n", cur_btn ? "pressed" : "released");
+//        SEGGER_RTT_printf(0, "enc button %s\n", cur_btn ? "pressed" : "released");
 //        send_3dx_report_buttons(cur_btn ? 0 : V3DK_1 );
 //        return;
 
@@ -341,15 +343,15 @@ uint32_t do_encoder() {
     int enc_delta = RotaryEncoder.read();
     if (enc_delta) {
         encoder_value += enc_delta;
-        SEGGER_RTT_printf(0, "encoder: %d\n", encoder_value);
-        if(translation_mode == MODE_ROT_3DOF ) {
-            SENSOR_R_SCALE += 0.05f * (float) (enc_delta);
-            if (SENSOR_R_SCALE < 0.2) {
-                SENSOR_R_SCALE = 0.2;
-            } else if (SENSOR_R_SCALE > 5) {
-                SENSOR_R_SCALE = 5;
-            }
-        }
+//        SEGGER_RTT_printf(0, "encoder: %d\n", encoder_value);
+//        if(translation_mode == MODE_ROT_3DOF ) {
+//            SENSOR_R_SCALE += 0.05f * (float) (enc_delta);
+//            if (SENSOR_R_SCALE < 0.2) {
+//                SENSOR_R_SCALE = 0.2;
+//            } else if (SENSOR_R_SCALE > 5) {
+//                SENSOR_R_SCALE = 5;
+//            }
+//        }
     }
 
     return enc_delta;
