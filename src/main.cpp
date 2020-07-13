@@ -113,7 +113,7 @@ void setup()
     SEGGER_RTT_printf(0, "setup end\n");
 
 
-    xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_LOW, &_bsensHandle);
+//    xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_LOW, &_bsensHandle);
 
 #ifdef USE_GYRO
     xTaskCreate(gyro_task, "gyro", STACK_SZ, NULL, TASK_PRIO_LOW, &_gyroHandle);
@@ -179,7 +179,7 @@ uint32_t do_encoder();
 
 bool zero_motion_sent = true;
 
-const int USB_WAIT_DELAY_MS = 2;
+const int USB_WAIT_DELAY_MS = 1;
 const int GYRO_SEND_INTERVAL_MS = 1000/60; // 60Hz
 
 uint32_t t_gyro_send_prev = 0;
@@ -324,10 +324,10 @@ uint32_t do_encoder() {
 
             switch (translation_mode) {
                 case MODE_ROT_3DOF:
-                    translation_mode = MODE_TRANS2_ROT1;
+                    translation_mode = MODE_MOUSE_1RDOF;
                     ledOn(LED_BLUE);
                     break;
-                case MODE_TRANS2_ROT1:
+                case MODE_MOUSE_1RDOF:
                     translation_mode = MODE_RAW;
                     ledOn(LED_RED);
                     break;

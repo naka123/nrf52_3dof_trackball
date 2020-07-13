@@ -29,11 +29,11 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc)
 //        map_as_2Rdof(dx, dy, dz, 0, &report);
 
 //        const int16_t dyz = abs(dy) > abs(dz) ? dy : dz;
-        const float x = cubic_curve(-dz, 0.25, 64);
-        const float y = cubic_curve(dy, 0.25, 64);
+        const float x = -dz; //cubic_curve(-dz, 0.25, 64);
+        const float y = -dy; // cubic_curve(dy, 0.25, 64);
 
         //tud_hid_mouse_report(REPORT_ID_MOUSE, 0, x / 2, y / 2, 0, 0);
-        send_3dx_report_mouse(0, x / 2, y / 2, 0, 0);
+        send_3dx_report_mouse(x, y, d_enc, 0, 0);
 
 
         while (!tud_hid_ready()) {
@@ -130,6 +130,7 @@ bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_en
             .dz = dz,
             .d_enc = d_enc,
             .enc = enc,
+            .millis = millis()
     };
     return tud_hid_report(REPORT_ID_RAW_SENSOR, &report, sizeof(report));
 };

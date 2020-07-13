@@ -218,7 +218,12 @@ enum {
       HID_USAGE_PAGE_N ( 0xFF01, 2     )        ,\
       \
       HID_REPORT_ID       ( REPORT_ID_RAW_GYRO ), \
-      HID_USAGE      ( 0x1  )        ,\
+      HID_USAGE      ( 0x01  )        ,\
+      HID_USAGE      ( 0x11  )        ,\
+      HID_USAGE      ( 0x21  )        ,\
+      HID_USAGE      ( 0x31  )        ,\
+      HID_USAGE      ( 0x41  )        ,\
+      HID_USAGE      ( 0x51  )        ,\
       HID_LOGICAL_MIN ( 0x00 ),\
       HID_LOGICAL_MAX ( 0xff ),\
       HID_REPORT_SIZE ( 16 ),\
@@ -226,19 +231,25 @@ enum {
       HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
       \
       HID_REPORT_ID       ( REPORT_ID_RAW_SENSOR ), \
-      HID_USAGE      ( 0x1  )        ,\
+      HID_USAGE      ( 0x02  )        ,\
+      HID_USAGE      ( 0x12  )        ,\
+      HID_USAGE      ( 0x22  )        ,\
+      HID_USAGE      ( 0x32  )        ,\
+      HID_USAGE      ( 0x42  )        ,\
       HID_LOGICAL_MIN_N ( -32768, 2 ),\
       HID_LOGICAL_MAX_N ( 32768, 2 ),\
       HID_REPORT_SIZE ( 16 ),\
-      HID_REPORT_COUNT( 4 ),\
-      HID_LOGICAL_MIN_N ( -1000000, 3 ),\
-      HID_LOGICAL_MAX_N ( 1000000, 3 ),\
+      HID_REPORT_COUNT( 5 ),\
+      HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
+      HID_USAGE      ( 0x52  )        ,\
+      HID_LOGICAL_MIN_N ( 0, 2 ),\
+      HID_LOGICAL_MAX_N ( 0xFFFFFFFF, 3 ),\
       HID_REPORT_SIZE ( 32 ),\
       HID_REPORT_COUNT( 1 ),\
       HID_INPUT      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
       \
       HID_REPORT_ID       ( REPORT_ID_MODE ), \
-      HID_USAGE      ( 0x1  )        ,\
+      HID_USAGE      ( 0x3  )        ,\
       HID_LOGICAL_MIN ( 0x00 ),\
       HID_LOGICAL_MAX ( 0xff ),\
       HID_REPORT_SIZE ( 8 ),\
@@ -246,7 +257,7 @@ enum {
       HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
       \
       HID_REPORT_ID       ( REPORT_ID_R_SCALE ), \
-      HID_USAGE      ( 0x2  )        ,\
+      HID_USAGE      ( 0x4  )        ,\
       HID_LOGICAL_MIN ( 0 ),\
       HID_LOGICAL_MAX ( 20 ),\
       HID_PHYSICAL_MIN ( 0 ),\
@@ -259,12 +270,12 @@ enum {
       HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
        \
       HID_REPORT_ID       ( REPORT_ID_T_SCALE ), \
-      HID_USAGE      ( 0x3  )        ,\
+      HID_USAGE      ( 0x5  )        ,\
       HID_REPORT_COUNT( 1 ),\
       HID_FEATURE      ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ),\
       \
       HID_REPORT_ID       ( REPORT_ID_MIRROR_FEED ), \
-      HID_USAGE      ( 0x4  )        ,\
+      HID_USAGE      ( 0x6  )        ,\
       HID_REPORT_SIZE ( 8 ),\
       HID_REPORT_COUNT( 63 ),\
       HID_FEATURE      ( HID_DATA | HID_ARRAY | HID_ABSOLUTE  ),\
@@ -330,7 +341,8 @@ typedef struct TU_ATTR_PACKED
     int16_t  dy;
     int16_t  dz;
     int16_t  d_enc;
-    int32_t  enc;
+    int16_t  enc;
+    uint32_t millis;
 } hid_3dx_report_raw_sensor_t;
 
 void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc);
