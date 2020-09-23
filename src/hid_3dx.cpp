@@ -1,5 +1,6 @@
 #include "hid_3dx.h"
 #include <string.h>
+#include <helper_3dmath_my.h>
 
 uint8_t translation_mode = MODE_ROT_3DOF;
 
@@ -14,7 +15,7 @@ bipbuf_t BipBuf;
 
 #define USB_WAIT_DELAY_MS 1
 
-void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc) {
+void send_motion(const int16_t dx, const int16_t dy, const int16_t dz, const int16_t d_enc, const int32_t enc, const uint32_t ts) {
 
     hid_3dx_report_6dof_t report;
 
@@ -29,11 +30,11 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc)
 //        map_as_2Rdof(dx, dy, dz, 0, &report);
 
 //        const int16_t dyz = abs(dy) > abs(dz) ? dy : dz;
-        const float x = -dz; //cubic_curve(-dz, 0.25, 64);
-        const float y = -dy; // cubic_curve(dy, 0.25, 64);
+//        const float x = -dz; //cubic_curve(-dz, 0.25, 64);
+//        const float y = -dy; // cubic_curve(dy, 0.25, 64);
 
         //tud_hid_mouse_report(REPORT_ID_MOUSE, 0, x / 2, y / 2, 0, 0);
-        send_3dx_report_mouse(x, y, d_enc, 0, 0);
+        send_3dx_report_mouse(dx, dy, dz, d_enc, 0, 0);
 
 
         while (!tud_hid_ready()) {
@@ -42,7 +43,7 @@ void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc)
 
     } else if( translation_mode == MODE_RAW ) {
 //        send_3dx_report_raw_gyro(dx, 0, 0, 0, 0, 0);
-        send_3dx_report_raw_sensor(dx, dy, dz, d_enc, enc);
+        send_3dx_report_raw_sensor(dx, dy, dz, d_enc, enc, ts);
     } else {
         return;
     }
@@ -81,18 +82,35 @@ void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *r
     report->rz       = 0;
 }
 
+// "центр" наверху шара, под углом -45 градусов от сенсоров (ближний сенсор - низ, дальний - вперёд)
+Quaternion q_corr = Quaternion::fromAngleAxis(-45/180.*M_PI, {0, 1, 0});
+Quaternion q_corr_i = q_corr.getConjugate();
+const float timestep = 2. / 1000; // sec
+const float SCALE = 450;
 
-void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report) {
-    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE / 2);
-    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE / 2);
-    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE / 2);
+void map_as_3Rdof_and_zoom(const int16_t dx, const int16_t dy, const int16_t dz, const int16_t d_enc, hid_3dx_report_6dof_t *report) {
+//    const auto rx = (int16_t)((float)(dy) * SENSOR_R_SCALE / 2);
+//    const auto ry = (int16_t)((float)(-dx) * SENSOR_R_SCALE / 2);
+//    const auto rz = (int16_t)((float)(-dz) * SENSOR_R_SCALE / 2);
+
+    auto dq = Quaternion::integrate({float(dx), float(dy), float(dz)}, timestep);
+    auto q_adusted = q_corr * dq * q_corr_i;
+    q_adusted.normalize();
+
+    ANGLES yaw_pitch_roll;
+    q_adusted.eulerAngles(&yaw_pitch_roll);
 
     report->x       = 0;
     report->y       = d_enc;
     report->z       = 0;
-    report->rx     = cubic_curve(rx, CUBIC_COEF, 64);
-    report->ry     = cubic_curve(ry, CUBIC_COEF, 64);
-    report->rz     = cubic_curve(rz, CUBIC_COEF, 64);
+//    report->rx     = cubic_curve(rx, CUBIC_COEF, 64);
+//    report->ry     = cubic_curve(ry, CUBIC_COEF, 64);
+//    report->rz     = cubic_curve(rz, CUBIC_COEF, 64);
+
+    report->rx = yaw_pitch_roll.roll * SCALE;;
+    report->ry = -yaw_pitch_roll.pitch * SCALE;
+    report->rz = -yaw_pitch_roll.yaw * SCALE;
+
 }
 
 
@@ -146,11 +164,23 @@ typedef struct TU_ATTR_PACKED
 } hid_mouse16_report_t;
 
 
-bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons) {
+bool send_3dx_report_mouse(const int16_t dx, const int16_t dy, const int16_t dz, const int16_t d_wheel, const int8_t d_hwheel, const uint8_t buttons) {
+
+    auto dq = Quaternion::integrate({float(dx), float(dy), float(dz)}, timestep);
+    auto q_adusted = q_corr * dq * q_corr_i;
+    q_adusted.normalize();
+
+    ANGLES yaw_pitch_roll;
+    q_adusted.eulerAngles(&yaw_pitch_roll);
+
+//    report->rx = yaw_pitch_roll.roll * SCALE;;
+//    report->ry = -yaw_pitch_roll.pitch * SCALE;
+//    report->rz = -yaw_pitch_roll.yaw * SCALE;
+
     hid_mouse16_report_t report = {
             .buttons = buttons,
-            .x = dx,
-            .y = dy,
+            .x = int16_t(-yaw_pitch_roll.yaw * SCALE / 1.5),
+            .y = int16_t(-yaw_pitch_roll.roll * SCALE / 1.5),
             .wheel = d_wheel,
             .pan = d_hwheel,
     };
