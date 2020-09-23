@@ -37,6 +37,13 @@ THE SOFTWARE.
 
 class VectorFloat;
 
+struct ANGLES {
+    float roll;
+    float pitch;
+    float yaw;
+};
+
+
 class Quaternion {
     public:
         float w;
@@ -97,8 +104,9 @@ class Quaternion {
             return r;
         }
 
+        static Quaternion integrate(const VectorFloat& rate, float timestep);
         float toAngleAxis(VectorFloat &axis) const;
-        static Quaternion fromAngleAxis(float angle, VectorFloat &axis);
+        static Quaternion fromAngleAxis(float angle, const VectorFloat &axis);
 
         bool operator ==(const Quaternion& other) const {
             return w == other.w && x == other.x && y == other.y && z == other.z;
@@ -108,6 +116,7 @@ class Quaternion {
             return getProduct(other);
         };
 
+    void eulerAngles(ANGLES *e);
 
 };
 
