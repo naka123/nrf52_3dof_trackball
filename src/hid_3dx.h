@@ -386,7 +386,7 @@ typedef struct TU_ATTR_PACKED
     uint32_t millis;
 } hid_3dx_report_raw_sensor_t;
 
-void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc);
+void send_motion(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc, uint32_t ts);
 void map_as_3Tdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_2T1Rdof(int16_t dx, int16_t dy, int16_t dz, hid_3dx_report_6dof_t *report);
 void map_as_3Rdof_and_zoom(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_report_6dof_t *report);
@@ -395,9 +395,9 @@ void map_as_2Rdof(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, hid_3dx_rep
 
 bool send_3dx_report_6dof(const hid_3dx_report_6dof_t *report);
 bool send_3dx_report_buttons(uint32_t buttons);
-bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons);
+bool send_3dx_report_mouse(int16_t dx, int16_t dy, int16_t dz, int16_t d_wheel, int8_t d_hwheel, uint8_t buttons);
 bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, int16_t gy, int16_t gz);
-bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc);
+bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc, uint32_t ts);
 
 
 uint16_t get_report_callback (uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen);

@@ -141,14 +141,14 @@ bool send_3dx_report_raw_gyro(int16_t ax, int16_t ay, int16_t az, int16_t gx, in
 };
 
 
-bool send_3dx_report_raw_sensor(int16_t dx, int16_t dy, int16_t dz, int16_t d_enc, int32_t enc) {
+bool send_3dx_report_raw_sensor(const int16_t dx, const int16_t dy, const int16_t dz, const int16_t d_enc, const int32_t enc, uint32_t ts) {
     hid_3dx_report_raw_sensor_t report = {
             .dx = dx,
             .dy = dy,
             .dz = dz,
             .d_enc = d_enc,
-            .enc = enc,
-            .millis = millis()
+            .enc = (int16_t)enc,
+            .millis = ts
     };
     return tud_hid_report(REPORT_ID_RAW_SENSOR, &report, sizeof(report));
 };
