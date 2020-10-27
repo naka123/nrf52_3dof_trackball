@@ -26,14 +26,71 @@ Adafruit_USBD_HID usb_hid;
 
 #define STACK_SZ       (256*4)
 
+bipbuf_t BipBuf_ball;
+
+struct ball_data_t {
+    int16_t cx, cy, cz;
+    Quaternion q;
+    uint32_t ts;
+};
+
 static TaskHandle_t  _bsensHandle;
 
 [[noreturn]] static void ball_task(void* arg) {
     (void) arg;
 
+    int8_t m1x, m1y, m2x, m2y;
+    uint8_t stat1, stat2, qua1, qua2;
+
+    bipbuf_init(&BipBuf_ball, BIPBUF_SIZE);
+
     while(true) {
-        yield();
-        delay(1);
+//        yield();
+
+        read_paw3204_status(DEV1, &stat1);
+        if (stat1 & 0x80) {
+            read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
+        } else {
+            m1x = 0;
+            m1y = 0;
+        }
+
+
+        read_paw3204_status(DEV2, &stat2);
+        if (stat2 & 0x80) {
+            read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
+        } else {
+            m2x = 0;
+            m2y = 0;
+        }
+
+        if (stat1 & 0x80 || stat2 & 0x80) {
+            // второй сенсор повёрнут относительно первого на 180 градусов
+            m1x = -m1x;
+            m1y = -m1y;
+
+// делаем вообще по-другому. теперь x/y будет отдаваться одним сенсором, полностью. а z - другим. благо они под 90 градусов стоят
+
+            const float cx = m1x;
+            const float cy = m1y;
+            const float cz = m2x;
+
+
+
+            auto pkt = (ball_data_t *) (bipbuf_request(&BipBuf_ball, sizeof(ball_data_t)));
+            if (pkt != nullptr) {
+                pkt->cx = cx;
+                pkt->cy = cy;
+                pkt->cz = cz;
+                pkt->ts = millis();
+//                pkt->q = Quaternion(w, ha.x, ha.y, ha.z);
+                bipbuf_push(&BipBuf_ball, sizeof(ball_data_t));
+            } else {
+                printf("OVERFLOW!!!!\n");
+            }
+        }
+
+        delay(5);
     }
 
 //    hwReadConfigBlock
@@ -113,7 +170,7 @@ void setup()
     SEGGER_RTT_printf(0, "setup end\n");
 
 
-//    xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_LOW, &_bsensHandle);
+    xTaskCreate(ball_task, "ball", STACK_SZ, NULL, TASK_PRIO_HIGH, &_bsensHandle);
 
 #ifdef USE_GYRO
     xTaskCreate(gyro_task, "gyro", STACK_SZ, NULL, TASK_PRIO_LOW, &_gyroHandle);
@@ -187,6 +244,7 @@ uint32_t t_gyro_send_prev = 0;
 void loop()
 {
 
+    bool something_sent = false;
 
     if (bipbuf_used(&BipBuf_hid_mirror) > 2) {
 
@@ -211,13 +269,15 @@ void loop()
         tud_hid_report(report_id, report_data, report_sz);
         bipbuf_poll(&BipBuf_hid_mirror, report_sz);
 
+        something_sent = true;
+
 //        printf("sending report_id: report_id:0x%02x %d bytes (used after: %d bytes)\n", report_id, report_sz, bipbuf_used(&BipBuf));
 
     }
 
-    while (! usb_hid.ready() ) {
-        delay(USB_WAIT_DELAY_MS);
-    }
+//    while (! usb_hid.ready() ) {
+//        delay(USB_WAIT_DELAY_MS);
+//    }
 
 //    SEGGER_RTT_printf(0, "loop tick\n");
 
@@ -262,46 +322,21 @@ void loop()
 
 #endif
 
-    read_paw3204_status(DEV1, &stat1);
-    if (stat1 & 0x80) {
-        read_paw3204_data(DEV1, &qua1, &m1x, &m1y);
-    } else {
-        m1x = 0;
-        m1y = 0;
-        // qua1 остаётся с прошлого раза
+//    printf("used: %d\n", bipbuf_used(&BipBuf_ball));
+    while ( bipbuf_used(&BipBuf_ball) >= sizeof(ball_data_t) ) {
+        while (! usb_hid.ready() ) {
+            delay(USB_WAIT_DELAY_MS);
+        }
+
+        auto ball_data = (ball_data_t *)(bipbuf_peek(&BipBuf_ball, sizeof(ball_data_t)));
+        send_motion(ball_data->cx, ball_data->cy, ball_data->cz, encoder_delta, encoder_value, ball_data->ts);
+        bipbuf_poll(&BipBuf_ball, sizeof(ball_data_t));
+
+        something_sent = true;
     }
 
-
-    read_paw3204_status(DEV2, &stat2);
-    if (stat2 & 0x80) {
-        read_paw3204_data(DEV2, &qua2, &m2x, &m2y);
-    } else {
-        m2x = 0;
-        m2y = 0;
-        // qua2 остаётся с прошлого раза
-    }
-
-    // если никаких изменений нет - можно ничего не посылать
-    if (stat1 & 0x80 || stat2 & 0x80 || encoder_delta != 0) {
-
-        zero_motion_sent = false;
-
-        // второй сенсор повёрнут относительно первого на 180 градусов
-        m1x = -m1x;
-        m1y = -m1y;
-
-        // движение по окружности диаметром 88мм, противы суммы 2х движений по окружности 62
-        const int16_t cy = (float)(m1y + m2y) / 2 * 1.41;
-        const int16_t cx = m1x + m2x;
-        const int16_t cz = (m1x - m2x);
-
-        send_motion(cx, cy, cz, encoder_delta, encoder_value);
-
-//    } else if (!zero_motion_sent) {
-//        send_motion(0, 0, 0, 0);
-//        zero_motion_sent = true;
-    } else {
-        delay(1);
+    if (! something_sent) {
+        delay(2);
     }
 
 
