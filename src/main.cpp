@@ -86,7 +86,7 @@ void setup()
     printf("nrf52 mouse test\n");
     printf("---------------------------\n");
 
-    bipbuf_init(&BipBuf, BIPBUF_SIZE);
+    bipbuf_init(&BipBuf_hid_mirror, BIPBUF_SIZE);
 
     init_paw3204(DEV1);
     if( read_pid_paw3204(DEV1) != SENSOR_PRODUCT_ID1 ) {
@@ -187,7 +187,8 @@ uint32_t t_gyro_send_prev = 0;
 void loop()
 {
 
-    if (bipbuf_used(&BipBuf) > 2) {
+
+    if (bipbuf_used(&BipBuf_hid_mirror) > 2) {
 
         while (! usb_hid.ready() ) {
             delay(USB_WAIT_DELAY_MS);
@@ -196,19 +197,19 @@ void loop()
 //        tud_hid_report(REPORT_ID_JOYSTICK, joystick_buffer[joystick_buffer_tail], JOYSTICK_REPORT_SIZE);
 //        joystick_buffer_tail = (joystick_buffer_tail + 1) % JOYSTICK_FEED_BUFFER_SIZE;
 
-        const uint8_t *hdr = bipbuf_peek(&BipBuf, 2);
+        const uint8_t *hdr = bipbuf_peek(&BipBuf_hid_mirror, 2);
         const uint8_t report_id = hdr[0];
         const uint8_t report_sz = hdr[1];
-        bipbuf_poll(&BipBuf, 2);
+        bipbuf_poll(&BipBuf_hid_mirror, 2);
 
         // может оказаться, что заголовок уже залит, а сам пакет ещё нет.
         // или не может, тут же всё-таки не многопоточность
 
         // while (bipbuf_used(&BipBuf) < report_sz) delay(1);
 
-        const uint8_t *report_data = bipbuf_peek(&BipBuf, report_sz);
+        const uint8_t *report_data = bipbuf_peek(&BipBuf_hid_mirror, report_sz);
         tud_hid_report(report_id, report_data, report_sz);
-        bipbuf_poll(&BipBuf, report_sz);
+        bipbuf_poll(&BipBuf_hid_mirror, report_sz);
 
 //        printf("sending report_id: report_id:0x%02x %d bytes (used after: %d bytes)\n", report_id, report_sz, bipbuf_used(&BipBuf));
 

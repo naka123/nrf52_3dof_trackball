@@ -9,7 +9,7 @@ float SENSOR_T_SCALE = 1.5f;
 float CUBIC_COEF = 0.33;
 
 
-bipbuf_t BipBuf;
+bipbuf_t BipBuf_hid_mirror;
 
 
 
@@ -319,8 +319,8 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8
                         buffer[2]  // report size
                 };
 
-                bipbuf_offer(&BipBuf, hdr, 2);
-                bipbuf_offer(&BipBuf, buffer+3, hdr[1]);
+                bipbuf_offer(&BipBuf_hid_mirror, hdr, 2);
+                bipbuf_offer(&BipBuf_hid_mirror, buffer + 3, hdr[1]);
 //                printf("REPORT_ID_JOYSTICK_FEED: feed to bip: report_id:0x%02x %d bytes (used: %d bytes)\n", hdr[0], hdr[1], bipbuf_used(&BipBuf));
                 break;
             }

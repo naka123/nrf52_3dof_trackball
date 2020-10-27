@@ -21,7 +21,7 @@ extern "C"
 
 static const int JOYSTICK_REPORT_SIZE = 2 * 8 + 4 + 4 * 2;
 
-extern bipbuf_t BipBuf;
+extern bipbuf_t BipBuf_hid_mirror;
 
 enum {
     REPORT_ID_6DOF = 1,

@@ -62,7 +62,7 @@ static void __check_for_switch_to_b(bipbuf_t* me)
 unsigned char *bipbuf_request(bipbuf_t* me, const unsigned int size)
 {
     if (bipbuf_unused(me) < size)
-        return 0;
+        return nullptr;
     if (1 == me->b_inuse)
     {
         return (unsigned char *)me->data + me->b_end;

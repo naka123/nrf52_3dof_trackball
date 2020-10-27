@@ -16,7 +16,7 @@
 #include <string>
 
 #define BUPBUF_STATIC 1
-#define BIPBUF_SIZE 2048
+#define BIPBUF_SIZE 1024
 
 typedef struct
 {
